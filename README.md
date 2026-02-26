@@ -1,6 +1,8 @@
-# Street View Crawler & Coverage Tracker
+# Open Geospy
 
-A Playwright-based web automation that navigates Google Street View, captures panoramic screenshots at each location, stores metadata (lat/lon/heading/pitch), deduplicates by proximity, and displays coverage on an interactive map. Supports parallel crawling via local workers or Modal.com cloud containers.
+An end-to-end framework that simulates core `geospy.ai` functionality, from Street View scraping and dataset building to image retrieval and location estimation from partial screenshots.
+
+It combines crawl orchestration, embedding/index pipelines, interactive map operations, and high-accuracy locate workflows in one stack.
 
 ## Architecture
 
@@ -105,6 +107,8 @@ python -m backend.app.main
 #   3. Configure workers, profile, step size, and run mode in the sidebar
 #   4. Click "Start Scan" -- progress updates live in the sidebar
 ```
+
+Note: manual seed CSV usage is mostly deprecated when using the web app. The UI generates and queues scan points automatically from your drawn area. Seed files remain mainly for CLI/manual workflows and some worker tooling.
 
 ### SQLite -> Postgres migration
 
