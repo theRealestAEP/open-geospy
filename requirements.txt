@@ -1,0 +1,10 @@
+playwright>=1.40.0
+fastapi>=0.109.0
+uvicorn>=0.27.0
+global-land-mask>=1.0.0
+modal>=0.73.0
+Pillow>=10.0.0
+psycopg[binary]>=3.2.0
+open-clip-torch>=2.24.0
+torch>=2.3.0
+opencv-python-headless>=4.10.0

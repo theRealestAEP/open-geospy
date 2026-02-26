@@ -1,0 +1,59 @@
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+.coverage
+htmlcov/
+.venv/
+venv/
+env/
+.python-version
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Frontend build artifacts
+frontend/node_modules/
+frontend/dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Runtime logs
+*.log
+scan_logs/
+
+# Large local datasets and generated artifacts
+captures/
+artifacts/
+archive/
+backups/
+*.db
+*.db-shm
+*.db-wal
+
+# Generated seed files
+seeds/scan_*.csv
+
+# Model/training outputs
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.safetensors
+
+# Temp files
+tmp/
+temp/
+*.tmp
+*.swp
