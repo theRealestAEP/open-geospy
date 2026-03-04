@@ -152,8 +152,12 @@ button.ghost { background: #3a3f5a; }
   border: 1px dashed #3d4c77;
   margin-bottom: 4px;
   display: flex;
+  flex-direction: column;
+  gap: 2px;
   align-items: center;
   justify-content: center;
+  text-align: center;
+  padding: 6px;
   font-size: 11px;
   color: #95a2c8;
   background: #101a38;

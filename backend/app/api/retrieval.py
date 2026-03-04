@@ -331,7 +331,13 @@ def create_retrieval_router(
                     detail="All retrieval models failed to encode. Check model/pretrained settings.",
                 )
             for row in rows:
-                row["web_path"] = capture_web_path(row.get("filepath", ""))
+                raw_path = row.get("filepath", "")
+                abs_path = capture_abs_path(raw_path)
+                row["web_path"] = (
+                    capture_web_path(raw_path)
+                    if abs_path and os.path.exists(abs_path)
+                    else ""
+                )
             elapsed_ms = round((time.perf_counter() - started) * 1000.0, 2)
             search_timings_ms["model_compute_total"] = round(
                 sum(float(v.get("total", 0.0)) for v in model_timings_ms.values()), 2

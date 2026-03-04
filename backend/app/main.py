@@ -615,7 +615,13 @@ async def get_panorama_detail(panorama_id: int):
     captures = db.get_captures_for_panorama(panorama_id)
     db.close()
     for capture in captures:
-        capture["web_path"] = _capture_web_path(capture.get("filepath", ""))
+        raw_path = capture.get("filepath", "")
+        abs_path = _capture_abs_path(raw_path)
+        capture["web_path"] = (
+            _capture_web_path(raw_path)
+            if abs_path and os.path.exists(abs_path)
+            else ""
+        )
     return JSONResponse(captures)
 
 

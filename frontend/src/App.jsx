@@ -25,8 +25,24 @@ const LEGACY_ACTIVE_SCAN_STORAGE_KEY = 'geospy.active_scan_id';
 const retrievalControlHelp = {
   reference_image: 'Upload the photo you want to search.',
   search_top_k: 'How many nearest results to return in Search mode.',
-  min_similarity: 'Optional floor for match similarity. Higher values are stricter and may reduce recall.'
+  min_similarity: 'Optional floor for match similarity. Higher values are stricter and may reduce recall.',
+  embedding_base: 'Choose which embedding set to search against.'
 };
+
+function formatRetrievalModelLabel(modelName, modelVersion) {
+  const name = String(modelName || '').trim();
+  const version = String(modelVersion || '').trim().toLowerCase();
+  if (!name) {
+    return '';
+  }
+  if (!version || version === 'open_clip') {
+    return name;
+  }
+  if (version === 'open_clip_place') {
+    return `${name} place`;
+  }
+  return `${name} ${modelVersion}`;
+}
 
 function interpolateColor(c1, c2, ratio) {
   const hex = (s) => parseInt(s, 16);
@@ -97,6 +113,10 @@ function App() {
   const [retrievalBusy, setRetrievalBusy] = useState(false);
   const [retrievalResults, setRetrievalResults] = useState([]);
   const [topSearchCaptureId, setTopSearchCaptureId] = useState(null);
+  const [retrievalEmbeddingBase, setRetrievalEmbeddingBase] = useState('clip');
+  const [retrievalEmbeddingBaseOptions, setRetrievalEmbeddingBaseOptions] = useState([
+    { value: 'clip', label: 'CLIP' }
+  ]);
   const [retrievalStats, setRetrievalStats] = useState({
     model_name: '',
     model_version: '',
@@ -730,7 +750,7 @@ function App() {
         captures: captures.map((c) => ({
           id: c.id,
           heading: c.heading,
-          src: c.web_path || `/${String(c.filepath || '').replace(/\\/g, '/')}`
+          src: String(c.web_path || '').trim()
         }))
       });
     } catch {
@@ -1015,13 +1035,33 @@ function App() {
       const res = await fetch('/api/retrieval/index-stats');
       if (!res.ok) return;
       const body = await res.json();
+      const models = Array.isArray(body.models) ? body.models : [];
+      const baseToModel = new Map();
+      models.forEach((modelStats) => {
+        const base = String(modelStats.embedding_base || '').trim().toLowerCase();
+        if (!base || baseToModel.has(base)) return;
+        baseToModel.set(base, modelStats);
+      });
+      const normalizedOptions = baseToModel.size ? Array.from(baseToModel.keys()) : ['clip'];
+      setRetrievalEmbeddingBaseOptions(
+        normalizedOptions.map((value) => ({
+          value,
+          label: formatRetrievalModelLabel(
+            baseToModel.get(value)?.model_name,
+            baseToModel.get(value)?.model_version
+          ) || value.toUpperCase()
+        }))
+      );
+      setRetrievalEmbeddingBase((prev) => (
+        normalizedOptions.includes(prev) ? prev : normalizedOptions[0]
+      ));
       setRetrievalStats({
         model_name: body.model_name || '',
         model_version: body.model_version || '',
         total_captures: Number(body.total_captures || 0),
         embedded_captures: Number(body.embedded_captures || 0),
         pending_captures: Number(body.pending_captures || 0),
-        models: Array.isArray(body.models) ? body.models : []
+        models
       });
     } catch (error) {
       console.error('retrieval stats error', error);
@@ -1040,6 +1080,7 @@ function App() {
       const formData = new FormData();
       formData.append('image', retrievalFile);
       formData.append('top_k', String(Math.max(1, Number(retrievalSearchTopK) || 12)));
+      formData.append('embedding_base', retrievalEmbeddingBase);
       const minSimilarityRaw = String(retrievalMinSimilarity ?? '').trim();
       if (minSimilarityRaw !== '') {
         const parsedSimilarity = Number(minSimilarityRaw);
@@ -1064,7 +1105,10 @@ function App() {
       if (matches.length) {
         await focusRetrievalResult(matches[0]);
       }
-      setRetrievalStatus(`Found ${matches.length} matches.`);
+      const modelLabel = formatRetrievalModelLabel(body.model_name, body.model_version);
+      setRetrievalStatus(
+        `Found ${matches.length} matches${modelLabel ? ` (${modelLabel})` : ''}.`
+      );
       await loadRetrievalStats();
     } catch (error) {
       setRetrievalStatus(`Search failed: ${error.message}`);
@@ -1310,6 +1354,20 @@ function App() {
             />
           </label>
           <div className="grid2">
+            <label title={retrievalControlHelp.embedding_base}>
+              Search model
+              <select
+                value={retrievalEmbeddingBase}
+                onChange={(e) => setRetrievalEmbeddingBase(e.target.value)}
+                disabled={retrievalBusy}
+              >
+                {retrievalEmbeddingBaseOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
             <label title={retrievalControlHelp.search_top_k}>
               Search Top K
               <input
@@ -1365,7 +1423,14 @@ function App() {
                 {String(result.web_path || '').trim() ? (
                   <img src={result.web_path} alt={`match ${result.capture_id}`} />
                 ) : (
-                  <div className="retrievalItemPlaceholder">No local image</div>
+                  <div className="retrievalItemPlaceholder">
+                    No local image
+                    <span>
+                      {Number.isFinite(Number(result.lat)) && Number.isFinite(Number(result.lon))
+                        ? `${Number(result.lat).toFixed(6)}, ${Number(result.lon).toFixed(6)}`
+                        : 'Coordinates unavailable'}
+                    </span>
+                  </div>
                 )}
                 <span>score {(Number(result.similarity || 0)).toFixed(3)}</span>
                 {Number(result.capture_id) === Number(topSearchCaptureId) ? (
@@ -1382,7 +1447,14 @@ function App() {
           <div className="previewGrid">
             {preview.captures.length ? (
               preview.captures.map((c) => (
-                <img key={c.id} src={c.src} alt={`heading ${c.heading}`} title={`${c.heading} deg`} />
+                String(c.src || '').trim() ? (
+                  <img key={c.id} src={c.src} alt={`heading ${c.heading}`} title={`${c.heading} deg`} />
+                ) : (
+                  <div key={c.id} className="retrievalItemPlaceholder">
+                    No local image
+                    <span>heading {Number(c.heading || 0)}</span>
+                  </div>
+                )
               ))
             ) : (
               <p className="hint">Click a marker to preview captures.</p>
