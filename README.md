@@ -249,6 +249,14 @@ gunzip -c backups/<dump-file>.sql.gz | docker exec -i geospy-postgres psql -U ge
 
 Do not commit DB dumps into git history. Use a Release asset instead.
 
+What this DB snapshot contains:
+- Postgres schema + data needed by the app (`captures`, scan/enrich/fill job tables, and related metadata).
+- `capture_embeddings` vectors used for image search (pgvector-backed nearest-neighbor lookup).
+- Capture metadata including coordinates, pano ids, headings, and file path references.
+
+What it does not contain:
+- Local image files under `./captures` (those are separate from the DB and are not bundled in the SQL dump).
+
 ```bash
 # 1) Create a compressed SQL snapshot (optionally upload to an existing/new release tag)
 ./scripts/export_pgvector_snapshot.sh --release-tag data-snapshot-v1
@@ -276,11 +284,14 @@ If you already downloaded a dump locally:
 ./scripts/install_from_pgvector_snapshot.sh --snapshot-file backups/<snapshot-file>.sql.gz
 ```
 
-### Retrieval indexing (multi-model)
+### Retrieval indexing
 
 ```bash
-# Build embeddings for existing captures into capture_embeddings
+# Build embeddings for existing captures into capture_embeddings (default: clip base)
 python -m utils.index_capture_embeddings --batch-size 64
+
+# Optional: index secondary base (if enabled)
+# python -m utils.index_capture_embeddings --embedding-base pigeon --batch-size 64
 
 # Offload embedding inference to Modal for higher parallelism
 # (example uses 64 concurrent Modal workers)
@@ -290,7 +301,7 @@ python -m utils.index_capture_embeddings \
   --modal-workers 64 \
   --modal-worker-batch-size 64
 
-# Migrate/reindex capture_embeddings schema for multi-model keys
+# Optional maintenance: ensure indexes/constraints are up to date
 python -m utils.migrate_capture_embeddings_schema --reindex
 ```
 
@@ -315,14 +326,13 @@ Detailed retrieval architecture write-up (with flowchart):
 Retrieval env vars:
 - `GEOSPY_RETRIEVAL_MIN_MODEL_COVERAGE` (skip under-covered secondary models during query-time fusion)
 - `GEOSPY_RETRIEVAL_PRIMARY_WEIGHT`
-- `GEOSPY_RETRIEVAL_PLACE_WEIGHT`
+- `GEOSPY_RETRIEVAL_PIGEON_WEIGHT`
 - `GEOSPY_RETRIEVAL_DILIGENT_MODE` (default `1`; accuracy-first broader candidate search)
 - `GEOSPY_RETRIEVAL_SEARCH_CANDIDATE_MULTIPLIER`
 - `GEOSPY_RETRIEVAL_SEARCH_MAX_CANDIDATES`
 - `GEOSPY_RETRIEVAL_IVFFLAT_PROBES` (higher probes improves ANN recall at latency cost)
 - `GEOSPY_RETRIEVAL_QUERY_ADAPTER_PATH`
 - `GEOSPY_RETRIEVAL_QUERY_ADAPTER_CLIP_PATH`
-- `GEOSPY_RETRIEVAL_QUERY_ADAPTER_PLACE_PATH`
 - `GEOSPY_MODAL_RETRIEVAL_ENVIRONMENT`
 
 ### Partial-match evaluation harness (accuracy tuning / fine-tune prep)
