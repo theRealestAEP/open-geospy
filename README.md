@@ -180,16 +180,6 @@ python -m backend.app.main
 
 Note: manual seed CSV usage is mostly deprecated when using the web app. The UI generates and queues scan points automatically from your drawn area. Seed files remain mainly for CLI/manual workflows and some worker tooling.
 
-### SQLite -> Postgres migration
-
-```bash
-# Preview migration counts
-python -m utils.migrate_sqlite_to_postgres --dry-run
-
-# Run migration (requires empty target DB or --truncate-target)
-python -m utils.migrate_sqlite_to_postgres --apply
-```
-
 ### CLI workflow
 
 ```bash
