@@ -1127,25 +1127,29 @@ function App() {
     clearSearchFallbackMarker();
     if (map && Number.isFinite(lat) && Number.isFinite(lon)) {
       map.setView([lat, lon], Math.max(16, map.getZoom()));
-      if (!hasLocalImage) {
-        const streetViewUrl = buildStreetViewUrl(result);
-        const marker = L.circleMarker([lat, lon], {
-          radius: 7,
-          fillColor: '#ffd166',
-          fillOpacity: 0.95,
-          color: '#111',
-          weight: 2
-        }).addTo(map);
-        if (streetViewUrl) {
-          marker.bindTooltip('No local image. Click to open Street View');
-          marker.on('click', () => {
-            window.open(streetViewUrl, '_blank', 'noopener,noreferrer');
-          });
-        } else {
-          marker.bindTooltip('No local image available');
-        }
-        searchFallbackMarkerRef.current = marker;
+      const streetViewUrl = buildStreetViewUrl(result);
+      const marker = L.circleMarker([lat, lon], {
+        radius: 7,
+        fillColor: hasLocalImage ? '#4cc9f0' : '#ffd166',
+        fillOpacity: 0.95,
+        color: '#111',
+        weight: 2
+      }).addTo(map);
+      if (streetViewUrl) {
+        marker.bindTooltip(
+          hasLocalImage
+            ? 'Matched capture. Click to open Street View'
+            : 'No local image. Click to open Street View'
+        );
+        marker.on('click', () => {
+          window.open(streetViewUrl, '_blank', 'noopener,noreferrer');
+        });
+      } else {
+        marker.bindTooltip(
+          hasLocalImage ? 'Matched capture location' : 'No local image available'
+        );
       }
+      searchFallbackMarkerRef.current = marker;
     }
     if (result?.panorama_id != null) {
       await showPreview({ id: result.panorama_id, pano_id: result.pano_id || '' });
