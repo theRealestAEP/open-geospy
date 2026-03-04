@@ -21,7 +21,6 @@ class TripletRow:
     query_variant: str
     positive_capture_id: int
     negative_capture_id: int
-    mode: str
 
 
 def _capture_abs_path(captures_dir: str, filepath: str) -> str:
@@ -91,7 +90,6 @@ def _crop_variant(image_bytes: bytes, variant: str) -> Optional[bytes]:
 def _read_hard_negatives(
     path: str,
     *,
-    mode_filter: str,
     max_triplets: int,
     seed: int,
 ) -> List[TripletRow]:
@@ -101,7 +99,7 @@ def _read_hard_negatives(
         for row in reader:
             try:
                 mode = str(row.get("mode", "")).strip().lower()
-                if mode_filter != "both" and mode != mode_filter:
+                if mode == "locate":
                     continue
                 query_capture_id = int(row.get("query_capture_id", "0"))
                 positive_capture_id = int(row.get("expected_capture_id", "0"))
@@ -117,7 +115,6 @@ def _read_hard_negatives(
                         query_variant=query_variant,
                         positive_capture_id=positive_capture_id,
                         negative_capture_id=negative_capture_id,
-                        mode=mode or "unknown",
                     )
                 )
             except Exception:
@@ -216,7 +213,6 @@ def main():
     parser.add_argument("--hard-negatives-csv", required=True)
     parser.add_argument("--output", default="artifacts/query_adapter_clip.pt")
     parser.add_argument("--model-id", default="clip")
-    parser.add_argument("--mode", choices=["search", "locate", "both"], default="both")
     parser.add_argument("--max-triplets", type=int, default=80000)
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--epochs", type=int, default=4)
@@ -250,7 +246,6 @@ def main():
 
     triplets = _read_hard_negatives(
         args.hard_negatives_csv,
-        mode_filter=args.mode,
         max_triplets=max(1, int(args.max_triplets)),
         seed=int(args.seed),
     )

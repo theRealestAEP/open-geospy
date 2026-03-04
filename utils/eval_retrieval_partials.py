@@ -209,7 +209,6 @@ def main() -> None:
     )
     parser.add_argument("--sample-size", type=int, default=300)
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--mode", choices=["search", "locate", "both"], default="search")
     parser.add_argument("--top-k", type=int, default=20)
     parser.add_argument("--min-similarity", type=float, default=None)
     parser.add_argument(
@@ -220,13 +219,6 @@ def main() -> None:
     )
     parser.add_argument("--db-max-top-k", type=int, default=5000)
     parser.add_argument("--ivfflat-probes", type=int, default=120)
-    parser.add_argument("--locate-top-k-per-crop", type=int, default=0)
-    parser.add_argument("--locate-max-candidates", type=int, default=0)
-    parser.add_argument("--locate-vote-cap", type=int, default=0)
-    parser.add_argument("--locate-verify-top-n", type=int, default=0)
-    parser.add_argument("--locate-cluster-radius-m", type=float, default=0.0)
-    parser.add_argument("--locate-min-good-matches", type=int, default=0)
-    parser.add_argument("--locate-min-inlier-ratio", type=float, default=0.0)
     parser.add_argument("--out-csv", default="partial_eval_results.csv")
     parser.add_argument(
         "--hard-negatives-csv",
@@ -234,9 +226,6 @@ def main() -> None:
         help="Writes rows where exact top1 failed.",
     )
     args = parser.parse_args()
-
-    if str(args.mode).lower() in {"locate", "both"}:
-        print("warning: locate mode is removed; running search-only evaluation.")
 
     variants = [v.strip() for v in str(args.variants).split(",") if v.strip()]
     if not variants:

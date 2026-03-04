@@ -1,6 +1,6 @@
 # Open Geospy
 
-Open Geospy is a street-view crawling and visual search stack.
+Open Geospy is an open source version of geospy.ai it includes 4M+ embeddings from captures taken from San Francisco currently 
 
 This repo is currently focused on:
 - collecting Street View image data into Postgres + local files,
@@ -160,7 +160,7 @@ The compose stack uses `pgvector/pgvector:pg16`, so vector search is available i
 - `fastapi` + `uvicorn` -- web server and coverage viewer
 - `global-land-mask` -- offline land/water detection (~1km resolution)
 - `modal` -- cloud container orchestration (optional, for parallelization)
-- `opencv-python-headless` -- geometric verification (ORB + RANSAC) for image locator reranking
+- `opencv-python-headless` -- image processing utilities used by retrieval evaluation/training helpers
 
 ## Usage
 
@@ -245,14 +245,24 @@ python -m utils.backup_postgres
 gunzip -c backups/<dump-file>.sql.gz | docker exec -i geospy-postgres psql -U geospy -d geospy
 ```
 
-### Share an indexed pgvector snapshot (GitHub Releases)
-
-Do not commit DB dumps into git history. Use a Release asset instead.
-
 What this DB snapshot contains:
-- Postgres schema + data needed by the app (`captures`, scan/enrich/fill job tables, and related metadata).
+- Postgres schema + data needed by the app (`captures`, `panoramas`, scan/enrich/fill job tables, and related metadata).
 - `capture_embeddings` vectors used for image search (pgvector-backed nearest-neighbor lookup).
-- Capture metadata including coordinates, pano ids, headings, and file path references.
+- Capture metadata including coordinates, pano ids, headings, pitch, and file path references.
+
+Current snapshot profile (`data-snapshot-v1`, measured on 2026-03-04):
+- all captures taken in San Francisco
+- `captures`: `4,353,633` image rows.
+- `panoramas`: `27,161` pano rows.
+- `capture_embeddings`: `8,707,266` total vectors (`2` embeddings per capture):
+  - `ViT-B-32:open_clip` -> `4,353,633` vectors, `512` dimensions.
+  - `ViT-B-16:open_clip_place` -> `4,353,633` vectors, `512` dimensions.
+- Capture angle pattern:
+  - `24` heading slices per sweep (`0..345` in 15 degree steps).
+  - `5` pitch levels (`45`, `60`, `75`, `90`, `105` degrees).
+- Panorama coverage:
+  - average captures per panorama: `160.29`
+  - min/max captures per panorama: `4` / `1456` (depends on scan/enrich/fill history).
 
 What it does not contain:
 - Local image files under `./captures` (those are separate from the DB and are not bundled in the SQL dump).
@@ -342,7 +352,6 @@ Retrieval env vars:
 # and reports exact/same-panorama hit rates for search mode.
 python -m utils.eval_retrieval_partials \
   --sample-size 400 \
-  --mode search \
   --top-k 20 \
   --variants center80,center60,center40,left,right,top,bottom,q1,q2,q3,q4 \
   --db-max-top-k 5000 \

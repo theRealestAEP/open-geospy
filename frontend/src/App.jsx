@@ -106,7 +106,7 @@ function App() {
     models: []
   });
   const isScanPage = location.pathname === '/scan' || location.pathname === '/';
-  const isSearchPage = location.pathname === '/search' || location.pathname === '/locate';
+  const isSearchPage = location.pathname === '/search';
 
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
@@ -508,12 +508,12 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (location.pathname !== '/scan' && location.pathname !== '/search' && location.pathname !== '/locate') {
-      navigate('/scan', { replace: true });
-      return;
-    }
     if (location.pathname === '/locate') {
       navigate('/search', { replace: true });
+      return;
+    }
+    if (location.pathname !== '/scan' && location.pathname !== '/search') {
+      navigate('/scan', { replace: true });
     }
   }, [location.pathname, navigate]);
 
