@@ -587,6 +587,7 @@ def save_results_to_local_db(
                     ],
                     embedder.model_name,
                     embedder.model_version,
+                    embedding_base=str(getattr(embedder, "embedding_base", "clip")),
                 )
         except Exception as exc:
             log.warning(
@@ -603,6 +604,9 @@ def save_results_to_local_db(
                             embedder.model_name,
                             embedder.model_version,
                             vector,
+                            embedding_base=str(
+                                getattr(embedder, "embedding_base", "clip")
+                            ),
                         )
                         saved_embeddings += 1
                 except Exception as single_exc:

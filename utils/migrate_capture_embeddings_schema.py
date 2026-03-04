@@ -23,7 +23,7 @@ def main():
         if not db.is_vector_ready():
             raise SystemExit("Vector extension is unavailable.")
         # Re-run migration helper to ensure old single-key layouts are upgraded.
-        db._migrate_capture_embeddings_primary_key()
+        db._migrate_capture_embeddings_primary_key("capture_embeddings")
         db._ensure_model_specific_vector_indexes()
         db.conn.commit()
         if args.reindex:

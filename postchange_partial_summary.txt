@@ -1,0 +1,6 @@
+sampled_captures=1
+query_total=1
+skipped_images=0
+locate exact_top1=0/1 (0.00%) pano_top1=1/1 (100.00%) exact_top10=0/1 (0.00%) pano_top10=1/1 (100.00%)
+saved_results=/Users/alexpickett/Desktop/Projects/geoSpy/postchange_partial_results.csv
+saved_hard_negatives=/Users/alexpickett/Desktop/Projects/geoSpy/postchange_partial_hard_negatives.csv

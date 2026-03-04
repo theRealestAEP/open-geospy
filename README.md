@@ -175,6 +175,25 @@ python -m utils.backup_postgres
 gunzip -c backups/<dump-file>.sql.gz | docker exec -i geospy-postgres psql -U geospy -d geospy
 ```
 
+### Share an indexed pgvector snapshot (GitHub Releases)
+
+Do not commit DB dumps into git history. Use a Release asset instead.
+
+```bash
+# 1) Create a compressed SQL snapshot (optionally upload to an existing/new release tag)
+./scripts/export_pgvector_snapshot.sh --release-tag data-snapshot-v1
+
+# 2) Teammates restore from release URL
+./scripts/install_from_pgvector_snapshot.sh \
+  --snapshot-url https://github.com/<org>/<repo>/releases/download/data-snapshot-v1/<snapshot-file>.sql.gz
+```
+
+If you already downloaded a dump locally:
+
+```bash
+./scripts/install_from_pgvector_snapshot.sh --snapshot-file backups/<snapshot-file>.sql.gz
+```
+
 ### Retrieval indexing (multi-model)
 
 ```bash
@@ -204,33 +223,14 @@ get embedded continuously. Control with:
 - `GEOSPY_MODAL_EMBED_BATCH_SIZE`
 - `GEOSPY_MODAL_EMBED_MAX_RETRIES`
 
-The retrieval panel also supports a two-step locator flow:
+The retrieval panel is now search-only:
 - `Search by image` -- standard vector nearest-neighbor matches
-- `Locate image` -- multi-crop, multi-model retrieval + vote cap + geo clustering + geometric verification + appearance penalties
-
-Locate tuning is now primarily frontend-driven from the `Locate` page:
-- basic knob: `Locate Top K / crop`
-- advanced knobs: `max_candidates`, `verify_top_n`, `min_good_matches`, `min_inlier_ratio`, `panorama_vote_cap`, `cluster_radius_m`, `appearance_penalty_weight`, `db_max_top_k`, `ivfflat_probes`
-- values persist in browser local storage and are sent on each `/api/retrieval/locate-by-image` request
-- backend publishes default values and valid ranges at `GET /api/retrieval/locate-params`
+- top result is auto-focused and highlighted as the best match
 
 Detailed retrieval architecture write-up (with flowchart):
 - `docs/retrieval_pipeline.md`
 
-Locator env vars now act as startup defaults/fallbacks (useful for API-only clients and baseline policy):
-- `GEOSPY_RETRIEVAL_INCLUDE_DEBUG_DEFAULT`
-- `GEOSPY_LOCATOR_TOP_K_PER_CROP`
-- `GEOSPY_LOCATOR_MAX_MERGED_CANDIDATES`
-- `GEOSPY_LOCATOR_PANORAMA_VOTE_CAP`
-- `GEOSPY_LOCATOR_CLUSTER_RADIUS_M`
-- `GEOSPY_LOCATOR_VERIFY_TOP_N`
-- `GEOSPY_LOCATOR_MIN_GOOD_MATCHES`
-- `GEOSPY_LOCATOR_MIN_INLIER_RATIO`
-- `GEOSPY_LOCATOR_APPEARANCE_PENALTY_WEIGHT`
-- `GEOSPY_PLACE_MODEL_ENABLED`
-- `GEOSPY_PLACE_MODEL`
-- `GEOSPY_PLACE_PRETRAINED`
-- `GEOSPY_PLACE_VERSION`
+Retrieval env vars:
 - `GEOSPY_RETRIEVAL_MIN_MODEL_COVERAGE` (skip under-covered secondary models during query-time fusion)
 - `GEOSPY_RETRIEVAL_PRIMARY_WEIGHT`
 - `GEOSPY_RETRIEVAL_PLACE_WEIGHT`
@@ -241,49 +241,20 @@ Locator env vars now act as startup defaults/fallbacks (useful for API-only clie
 - `GEOSPY_RETRIEVAL_QUERY_ADAPTER_PATH`
 - `GEOSPY_RETRIEVAL_QUERY_ADAPTER_CLIP_PATH`
 - `GEOSPY_RETRIEVAL_QUERY_ADAPTER_PLACE_PATH`
-- `GEOSPY_LOCATOR_DB_MAX_TOP_K`
-- `GEOSPY_LOCATOR_MODAL_RERANK_ENABLED`
-- `GEOSPY_LOCATOR_MODAL_RERANK_REQUIRE_SUCCESS`
-- `GEOSPY_LOCATOR_MODAL_RERANK_TOP_N`
-- `GEOSPY_LOCATOR_MODAL_RERANK_WEIGHT`
 - `GEOSPY_MODAL_RETRIEVAL_ENVIRONMENT`
-- `GEOSPY_MODAL_RERANK_MODEL`
-- `GEOSPY_MODAL_RERANK_PRETRAINED`
-- `GEOSPY_MODAL_RERANK_MAX_WORKERS`
-- `GEOSPY_MODAL_RERANK_BATCH_SIZE`
-- `GEOSPY_MODAL_RERANK_MAX_RETRIES`
-- `GEOSPY_LOCATOR_MODAL_FEATURE_VERIFY_ENABLED` (SuperPoint + LightGlue verification stage in Modal)
-- `GEOSPY_LOCATOR_MODAL_FEATURE_VERIFY_REQUIRE_SUCCESS`
-- `GEOSPY_LOCATOR_MODAL_FEATURE_VERIFY_TOP_N`
-- `GEOSPY_LOCATOR_MODAL_FEATURE_VERIFY_MAX_WORKERS`
-- `GEOSPY_LOCATOR_MODAL_FEATURE_VERIFY_BATCH_SIZE`
-- `GEOSPY_LOCATOR_MODAL_FEATURE_VERIFY_MAX_RETRIES`
-- `GEOSPY_LOCATOR_MODAL_FEATURE_VERIFY_MAX_KEYPOINTS`
-- `GEOSPY_LOCATOR_MODAL_FEATURE_VERIFY_RESIZE_LONG_EDGE`
-- `GEOSPY_LOCATOR_MODAL_FEATURE_VERIFY_MIN_MATCHES`
-
-### Locator evaluation utility
-
-```bash
-# CSV columns: id,image_path,lat,lon
-python -m utils.eval_retrieval_locator --queries-csv queries.csv
-```
 
 ### Partial-match evaluation harness (accuracy tuning / fine-tune prep)
 
 ```bash
 # Samples existing captures with embeddings, generates partial crops,
-# and reports exact/same-panorama hit rates for search + locate modes.
+# and reports exact/same-panorama hit rates for search mode.
 python -m utils.eval_retrieval_partials \
   --sample-size 400 \
-  --mode both \
+  --mode search \
   --top-k 20 \
   --variants center80,center60,center40,left,right,top,bottom,q1,q2,q3,q4 \
   --db-max-top-k 5000 \
   --ivfflat-probes 120 \
-  --locate-top-k-per-crop 220 \
-  --locate-max-candidates 5000 \
-  --locate-verify-top-n 120 \
   --out-csv partial_eval_results.csv \
   --hard-negatives-csv partial_eval_hard_negatives.csv
 ```
@@ -299,9 +270,6 @@ python -m utils.run_hard_negative_finetune_loop \
   --sample-size 1500 \
   --db-max-top-k 5000 \
   --ivfflat-probes 120 \
-  --locate-top-k-per-crop 220 \
-  --locate-max-candidates 5000 \
-  --locate-verify-top-n 120 \
   --train-model-id clip \
   --train-max-triplets 80000 \
   --train-epochs 4 \
@@ -351,9 +319,7 @@ python -m utils.check_fill_candidates \
 | `/api/panorama/{id}` | GET | Captures for a specific panorama |
 | `/api/queue` | GET | Seed task queue breakdown |
 | `/api/retrieval/index-stats` | GET | Embedding coverage stats (primary + per-model) |
-| `/api/retrieval/locate-params` | GET | Locate tuning defaults + bounds for frontend/API clients |
 | `/api/retrieval/search-by-image` | POST | Upload reference image and return top-K similar captures |
-| `/api/retrieval/locate-by-image` | POST | Two-step geolocation with request-level tuning controls (including `db_max_top_k` + `ivfflat_probes`) |
 | `/api/retrieval/index-missing` | POST | Backfill embeddings for captures missing any configured retrieval model |
 | `/api/scan-area` | POST | Supports `job_type=scan|enrich|fill` with optional capture profile |
 
@@ -372,21 +338,21 @@ Edit `config.py` to adjust:
 ```
 backend/app/main.py  Web UI + API (FastAPI)
 backend/app/clip_embeddings.py Multi-model embedding loader/encoder (primary + place branch)
-backend/app/services/retrieval_locator.py Two-step locator pipeline + structured retrieval logging
 frontend/            React + Vite frontend
 worker/crawler.py    Single-seed Playwright crawler (BFS/DFS/random)
 worker/batch_crawler.py Batch crawler with CSV seeds and worker task claiming
 worker/modal_worker.py Modal.com app for cloud-parallel crawling
-worker/modal_retrieval_worker.py Modal app for high-recall retrieval second-pass reranking
+worker/modal_retrieval_worker.py Modal app for retrieval feature verification helpers
 config.py            Crawler configuration dataclass
 db/postgres_database.py Postgres adapter implementation
 seeds/               Generated scan seed CSVs
 utils/seed_grid.py   Bounding box to seed grid generator
 utils/seed_filter_roads.py OSM road proximity filter (pre-filter for water/empty)
 utils/backup_postgres.py Local Postgres backup helper
+scripts/export_pgvector_snapshot.sh Create/upload compressed DB snapshot (GitHub Releases asset)
+scripts/install_from_pgvector_snapshot.sh Bootstrap local DB from snapshot URL/file
 utils/index_capture_embeddings.py CLIP embedding backfill script
 utils/migrate_capture_embeddings_schema.py Multi-model embedding schema migration/reindex helper
-utils/eval_retrieval_locator.py Batch evaluator for locator distance error from labeled query CSV
 utils/eval_retrieval_partials.py Synthetic partial-crop evaluator for exact/same-panorama retrieval hit-rate
 utils/train_retrieval_query_adapter.py Hard-negative trainer for query-side linear adapter
 utils/run_hard_negative_finetune_loop.py End-to-end overnight mining + adapter training loop

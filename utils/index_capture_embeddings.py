@@ -6,7 +6,7 @@ from typing import Dict, List, Sequence, Tuple
 
 from backend.app.clip_embeddings import (
     encode_image_batch_for_all_models,
-    get_retrieval_embedders,
+    select_retrieval_embedders,
 )
 from config import CrawlerConfig
 from db.postgres_database import Database
@@ -27,6 +27,7 @@ def resolve_capture_path(raw_path: str, captures_dir: str, project_root: str) ->
 def _upsert_single_capture(
     db: Database,
     embedders: Sequence,
+    embedding_base: str,
     capture_id: int,
     image_bytes: bytes,
 ) -> bool:
@@ -39,6 +40,7 @@ def _upsert_single_capture(
                 embedder.model_name,
                 embedder.model_version,
                 vector,
+                embedding_base=embedding_base,
             )
             encoded_any = True
         except Exception as exc:
@@ -53,13 +55,15 @@ def _upsert_single_capture(
 def _process_local_batch(
     db: Database,
     embedders: Sequence,
+    embedding_base: str,
     valid_batch: List[Tuple[int, bytes]],
 ) -> Tuple[int, int]:
     indexed = 0
     skipped = 0
     try:
         model_batches = encode_image_batch_for_all_models(
-            [payload for _, payload in valid_batch]
+            [payload for _, payload in valid_batch],
+            embedders=embedders,
         )
         if not model_batches:
             raise RuntimeError("No retrieval models encoded successfully")
@@ -76,6 +80,7 @@ def _process_local_batch(
                 ],
                 embedder.model_name,
                 embedder.model_version,
+                embedding_base=embedding_base,
             )
         for capture_id, _ in valid_batch:
             indexed += 1
@@ -83,7 +88,9 @@ def _process_local_batch(
     except Exception as exc:
         print(f"batch failed; falling back to single-image mode error={exc}")
         for capture_id, image_bytes in valid_batch:
-            if _upsert_single_capture(db, embedders, capture_id, image_bytes):
+            if _upsert_single_capture(
+                db, embedders, embedding_base, capture_id, image_bytes
+            ):
                 indexed += 1
                 print(f"indexed capture_id={capture_id} total_indexed_increment=1")
             else:
@@ -95,6 +102,7 @@ def _process_local_batch(
 def _process_modal_batch(
     db: Database,
     embedders: Sequence,
+    embedding_base: str,
     valid_batch: List[Tuple[int, bytes]],
     num_workers: int,
     worker_batch_size: int,
@@ -110,6 +118,10 @@ def _process_modal_batch(
             "model_name": str(embedder.model_name),
             "pretrained": str(embedder.pretrained),
             "model_version": str(embedder.model_version),
+            "runtime": str(getattr(embedder, "runtime", "open_clip")),
+            "trust_remote_code": bool(
+                getattr(embedder, "trust_remote_code", False)
+            ),
         }
         for embedder in embedders
     ]
@@ -156,6 +168,7 @@ def _process_modal_batch(
                 ],
                 str(model_output.get("model_name") or ""),
                 str(model_output.get("model_version") or ""),
+                embedding_base=embedding_base,
             )
             encoded_any = True
         if encoded_any:
@@ -208,7 +221,9 @@ def _process_modal_batch(
                 skipped += 1
                 print(f"skip capture_id={capture_id} error=missing-image-for-fallback")
                 continue
-            if _upsert_single_capture(db, embedders, capture_id, image_bytes):
+            if _upsert_single_capture(
+                db, embedders, embedding_base, capture_id, image_bytes
+            ):
                 indexed_capture_ids.add(capture_id)
                 print(f"indexed capture_id={capture_id} source=local-fallback")
             else:
@@ -234,16 +249,22 @@ def main():
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--max-items", type=int, default=0)
     parser.add_argument(
+        "--embedding-base",
+        choices=["clip", "pigeon"],
+        default=os.getenv("GEOSPY_RETRIEVAL_EMBEDDING_BASE_DEFAULT", "clip"),
+        help="Embedding base/model family to index into capture_embeddings.",
+    )
+    parser.add_argument(
         "--mode",
         choices=["local", "modal"],
         default="local",
-        help="Embedding compute mode. local=run CLIP locally, modal=run CLIP inside Modal workers.",
+        help="Embedding compute mode. local=run configured embedders locally, modal=run embedders inside Modal workers.",
     )
     parser.add_argument(
         "--modal-workers",
         type=int,
-        default=max(1, int(os.getenv("GEOSPY_MODAL_EMBED_MAX_WORKERS", "16"))),
-        help="Max parallel Modal embedding containers (capped at 100).",
+        default=max(1, int(os.getenv("GEOSPY_MODAL_EMBED_MAX_WORKERS", "64"))),
+        help="Max parallel Modal embedding containers (capped at 512).",
     )
     parser.add_argument(
         "--modal-worker-batch-size",
@@ -276,9 +297,12 @@ def main():
     if not os.path.isabs(captures_dir):
         captures_dir = os.path.join(project_root, captures_dir)
 
-    embedders = list(get_retrieval_embedders())
+    embedding_base = str(args.embedding_base or "clip").strip().lower()
+    embedders = list(
+        select_retrieval_embedders(embedding_base, allow_fallback=False)
+    )
     if not embedders:
-        raise SystemExit("No retrieval models configured.")
+        raise SystemExit(f"No retrieval models configured for embedding_base={embedding_base}.")
     primary_embedder = embedders[0]
     db = Database(config.DATABASE_URL)
     if not db.is_vector_ready():
@@ -292,20 +316,34 @@ def main():
     max_items = max(0, int(args.max_items))
     batch_size = max(1, int(args.batch_size))
     modal_mode = str(args.mode) == "modal"
-    modal_workers = max(1, min(100, int(args.modal_workers)))
+    modal_workers = max(1, min(512, int(args.modal_workers)))
     modal_worker_batch_size = max(1, int(args.modal_worker_batch_size))
     modal_max_retries = max(0, int(args.modal_max_retries))
     modal_environment = (args.modal_environment or "").strip()
     fallback_local = not bool(args.no_modal_fallback_local)
+    has_hf_runtime = any(
+        str(getattr(embedder, "runtime", "")).strip().lower() == "hf_transformers"
+        for embedder in embedders
+    )
+    has_hf_token = bool(
+        os.getenv("HF_TOKEN", "").strip()
+        or os.getenv("HUGGING_FACE_HUB_TOKEN", "").strip()
+    )
+    has_modal_hf_secret = bool(os.getenv("GEOSPY_MODAL_HF_SECRET_NAME", "").strip())
+    if modal_mode and has_hf_runtime and not (has_hf_token or has_modal_hf_secret):
+        raise SystemExit(
+            "Modal HF auth missing: set HF_TOKEN/HUGGING_FACE_HUB_TOKEN "
+            "or GEOSPY_MODAL_HF_SECRET_NAME before running pigeon modal backfill."
+        )
 
     if modal_mode:
         print(
             "embedding mode=modal "
             f"workers={modal_workers} worker_batch_size={modal_worker_batch_size} "
-            f"fallback_local={fallback_local}"
+            f"fallback_local={fallback_local} embedding_base={embedding_base}"
         )
     else:
-        print("embedding mode=local")
+        print(f"embedding mode=local embedding_base={embedding_base}")
 
     try:
         while True:
@@ -330,6 +368,7 @@ def main():
                 ],
                 limit=fetch_limit,
                 after_capture_id=after_capture_id,
+                embedding_base=embedding_base,
             )
             if not rows:
                 break
@@ -359,6 +398,7 @@ def main():
                 indexed, skipped = _process_modal_batch(
                     db=db,
                     embedders=embedders,
+                    embedding_base=embedding_base,
                     valid_batch=valid_batch,
                     num_workers=modal_workers,
                     worker_batch_size=modal_worker_batch_size,
@@ -370,6 +410,7 @@ def main():
                 indexed, skipped = _process_local_batch(
                     db=db,
                     embedders=embedders,
+                    embedding_base=embedding_base,
                     valid_batch=valid_batch,
                 )
             total_indexed += int(indexed)
@@ -377,10 +418,16 @@ def main():
             print(f"progress indexed={total_indexed} skipped={total_skipped}")
     finally:
         stats = db.get_capture_embedding_stats(
-            primary_embedder.model_name, primary_embedder.model_version
+            primary_embedder.model_name,
+            primary_embedder.model_version,
+            embedding_base=embedding_base,
         )
         model_stats = [
-            db.get_capture_embedding_stats(embedder.model_name, embedder.model_version)
+            db.get_capture_embedding_stats(
+                embedder.model_name,
+                embedder.model_version,
+                embedding_base=embedding_base,
+            )
             for embedder in embedders
         ]
         db.close()

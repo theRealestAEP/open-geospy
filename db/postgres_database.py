@@ -21,6 +21,9 @@ DEFAULT_EMBEDDING_DIM = int(os.getenv("GEOSPY_EMBEDDING_DIM", "512"))
 DEFAULT_RETRIEVAL_IVFFLAT_PROBES = max(
     1, int(os.getenv("GEOSPY_RETRIEVAL_IVFFLAT_PROBES", "120"))
 )
+EMBEDDING_BASE_CLIP = "clip"
+EMBEDDING_BASE_PIGEON = "pigeon"
+CAPTURE_EMBEDDINGS_TABLE = "capture_embeddings"
 
 
 @dataclass
@@ -180,13 +183,23 @@ class Database:
             return
         self.conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {ddl_fragment}")
 
+    def _normalize_embedding_base(self, embedding_base: Optional[str]) -> str:
+        raw = str(embedding_base or EMBEDDING_BASE_CLIP).strip().lower()
+        if raw in {EMBEDDING_BASE_CLIP, EMBEDDING_BASE_PIGEON}:
+            return raw
+        return EMBEDDING_BASE_CLIP
+
+    def _embedding_table_for_base(self, embedding_base: Optional[str]) -> str:
+        self._normalize_embedding_base(embedding_base)
+        return CAPTURE_EMBEDDINGS_TABLE
+
     def _init_vector_schema(self):
         self.conn.execute("SAVEPOINT vector_init")
         try:
             self.conn.execute("CREATE EXTENSION IF NOT EXISTS vector")
             self.conn.execute(
                 f"""
-                CREATE TABLE IF NOT EXISTS capture_embeddings (
+                CREATE TABLE IF NOT EXISTS {CAPTURE_EMBEDDINGS_TABLE} (
                     capture_id BIGINT NOT NULL REFERENCES captures(id) ON DELETE CASCADE,
                     model_name TEXT NOT NULL,
                     model_version TEXT NOT NULL DEFAULT '',
@@ -197,7 +210,7 @@ class Database:
                 )
                 """
             )
-            self._migrate_capture_embeddings_primary_key()
+            self._migrate_capture_embeddings_primary_key(CAPTURE_EMBEDDINGS_TABLE)
             self.conn.execute(
                 """
                 CREATE INDEX IF NOT EXISTS idx_capture_embeddings_model
@@ -221,7 +234,7 @@ class Database:
             self.vector_enabled = False
             log.warning("Vector schema init failed; retrieval disabled: %s", exc)
 
-    def _migrate_capture_embeddings_primary_key(self):
+    def _migrate_capture_embeddings_primary_key(self, table_name: str):
         pk_info = self.conn.execute(
             """
             SELECT
@@ -232,16 +245,17 @@ class Database:
             JOIN LATERAL unnest(c.conkey) WITH ORDINALITY AS x(attnum, ordinality) ON TRUE
             JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = x.attnum
             WHERE c.contype = 'p'
-              AND t.relname = 'capture_embeddings'
+              AND t.relname = %s
             GROUP BY c.conname
             LIMIT 1
-            """
+            """,
+            (str(table_name),),
         ).fetchone()
         if not pk_info:
             self.conn.execute(
-                """
-                ALTER TABLE capture_embeddings
-                ADD CONSTRAINT capture_embeddings_pkey
+                f"""
+                ALTER TABLE {table_name}
+                ADD CONSTRAINT {table_name}_pkey
                 PRIMARY KEY (capture_id, model_name, model_version)
                 """
             )
@@ -251,12 +265,12 @@ class Database:
             return
         constraint_name = str(pk_info["constraint_name"])
         self.conn.execute(
-            f"ALTER TABLE capture_embeddings DROP CONSTRAINT IF EXISTS {constraint_name}"
+            f"ALTER TABLE {table_name} DROP CONSTRAINT IF EXISTS {constraint_name}"
         )
         self.conn.execute(
-            """
-            ALTER TABLE capture_embeddings
-            ADD CONSTRAINT capture_embeddings_pkey
+            f"""
+            ALTER TABLE {table_name}
+            ADD CONSTRAINT {table_name}_pkey
             PRIMARY KEY (capture_id, model_name, model_version)
             """
         )
@@ -268,45 +282,68 @@ class Database:
                 os.getenv("GEOSPY_CLIP_VERSION", "open_clip"),
             )
         ]
-        place_enabled = (
-            os.getenv("GEOSPY_PLACE_MODEL_ENABLED", "1").strip().lower()
+
+        configured_pigeon_models = []
+        pigeon_enabled = (
+            os.getenv("GEOSPY_PIGEON_MODEL_ENABLED", "0").strip().lower()
             in {"1", "true", "yes", "on"}
         )
-        if place_enabled:
+        if pigeon_enabled:
+            pigeon_runtime = (
+                os.getenv("GEOSPY_PIGEON_RUNTIME", "open_clip").strip().lower()
+            )
+            if pigeon_runtime == "open_clip":
+                pigeon_model_name = os.getenv("GEOSPY_PIGEON_CLIP_MODEL", "ViT-B-16")
+                pigeon_model_version = os.getenv(
+                    "GEOSPY_PIGEON_MODEL_VERSION", "pigeon_clip"
+                )
+            else:
+                pigeon_model_name = os.getenv("GEOSPY_PIGEON_MODEL_NAME", "")
+                pigeon_model_version = os.getenv(
+                    "GEOSPY_PIGEON_MODEL_VERSION", "pigeon_hf"
+                )
             configured_models.append(
                 (
-                    os.getenv("GEOSPY_PLACE_MODEL", "ViT-B-16"),
-                    os.getenv("GEOSPY_PLACE_VERSION", "open_clip_place"),
+                    pigeon_model_name,
+                    pigeon_model_version,
                 )
             )
-        seen = set()
-        for model_name, model_version in configured_models:
-            key = (str(model_name), str(model_version))
-            if key in seen:
-                continue
-            seen.add(key)
-            slug = (
-                f"{model_name}_{model_version}"
-                .replace("-", "_")
-                .replace(".", "_")
-                .replace("/", "_")
-                .lower()
-            )
-            slug = "".join(ch for ch in slug if ch.isalnum() or ch == "_")
-            if not slug:
-                continue
-            index_name = f"idx_cap_embed_ivf_{slug}"[:60]
-            model_name_sql = str(model_name).replace("'", "''")
-            model_version_sql = str(model_version).replace("'", "''")
-            self.conn.execute(
-                f"""
-                CREATE INDEX IF NOT EXISTS {index_name}
-                ON capture_embeddings
-                USING ivfflat (embedding vector_cosine_ops)
-                WITH (lists = 100)
-                WHERE model_name = '{model_name_sql}' AND model_version = '{model_version_sql}'
-                """
-            )
+
+        def ensure_indexes_for_table(table_name: str, index_prefix: str, models: Sequence[Tuple[str, str]]) -> None:
+            seen = set()
+            for model_name, model_version in models:
+                key = (str(model_name), str(model_version))
+                if key in seen:
+                    continue
+                seen.add(key)
+                slug = (
+                    f"{model_name}_{model_version}"
+                    .replace("-", "_")
+                    .replace(".", "_")
+                    .replace("/", "_")
+                    .lower()
+                )
+                slug = "".join(ch for ch in slug if ch.isalnum() or ch == "_")
+                if not slug:
+                    continue
+                index_name = f"{index_prefix}_{slug}"[:60]
+                model_name_sql = str(model_name).replace("'", "''")
+                model_version_sql = str(model_version).replace("'", "''")
+                self.conn.execute(
+                    f"""
+                    CREATE INDEX IF NOT EXISTS {index_name}
+                    ON {table_name}
+                    USING ivfflat (embedding vector_cosine_ops)
+                    WITH (lists = 100)
+                    WHERE model_name = '{model_name_sql}' AND model_version = '{model_version_sql}'
+                    """
+                )
+
+        ensure_indexes_for_table(
+            CAPTURE_EMBEDDINGS_TABLE,
+            "idx_cap_embed_ivf",
+            configured_models,
+        )
 
     def is_duplicate(self, lat: float, lon: float, radius_meters: float = 25.0) -> bool:
         return self.get_nearby_panorama_id(lat, lon, radius_meters) is not None
@@ -584,7 +621,9 @@ class Database:
     def is_vector_ready(self) -> bool:
         return bool(self.vector_enabled)
 
-    def get_capture_embedding_stats(self, model_name: str, model_version: str) -> dict:
+    def get_capture_embedding_stats(
+        self, model_name: str, model_version: str, embedding_base: str = EMBEDDING_BASE_CLIP
+    ) -> dict:
         total_captures = int(
             self.conn.execute("SELECT COUNT(*) AS c FROM captures").fetchone()["c"]
         )
@@ -598,11 +637,12 @@ class Database:
                 "pending_captures": total_captures,
             }
 
+        table_name = self._embedding_table_for_base(embedding_base)
         embedded_captures = int(
             self.conn.execute(
-                """
+                f"""
                 SELECT COUNT(*) AS c
-                FROM capture_embeddings
+                FROM {table_name}
                 WHERE model_name = %s AND model_version = %s
                 """,
                 (model_name, model_version),
@@ -610,6 +650,7 @@ class Database:
         )
         return {
             "vector_enabled": True,
+            "embedding_base": self._normalize_embedding_base(embedding_base),
             "model_name": model_name,
             "model_version": model_version,
             "total_captures": total_captures,
@@ -618,18 +659,24 @@ class Database:
         }
 
     def list_unembedded_captures(
-        self, model_name: str, model_version: str, limit: int = 64, after_capture_id: int = 0
+        self,
+        model_name: str,
+        model_version: str,
+        limit: int = 64,
+        after_capture_id: int = 0,
+        embedding_base: str = EMBEDDING_BASE_CLIP,
     ) -> List[dict]:
         if not self.vector_enabled:
             return []
+        table_name = self._embedding_table_for_base(embedding_base)
         rows = self.conn.execute(
-            """
+            f"""
             SELECT c.id AS capture_id, c.panorama_id, c.filepath, c.heading
             FROM captures c
             WHERE c.id > %s
               AND NOT EXISTS (
                     SELECT 1
-                    FROM capture_embeddings ce
+                    FROM {table_name} ce
                     WHERE ce.capture_id = c.id
                       AND ce.model_name = %s
                       AND ce.model_version = %s
@@ -646,9 +693,11 @@ class Database:
         models: Sequence[Tuple[str, str]],
         limit: int = 64,
         after_capture_id: int = 0,
+        embedding_base: str = EMBEDDING_BASE_CLIP,
     ) -> List[dict]:
         if not self.vector_enabled:
             return []
+        table_name = self._embedding_table_for_base(embedding_base)
         normalized_models = [
             (str(model_name), str(model_version))
             for model_name, model_version in models
@@ -672,7 +721,7 @@ class Database:
                     FROM target_models tm
                     WHERE NOT EXISTS (
                         SELECT 1
-                        FROM capture_embeddings ce
+                        FROM {table_name} ce
                         WHERE ce.capture_id = c.id
                           AND ce.model_name = tm.model_name
                           AND ce.model_version = tm.model_version
@@ -691,13 +740,15 @@ class Database:
         model_name: str,
         model_version: str,
         embedding: Sequence[float],
+        embedding_base: str = EMBEDDING_BASE_CLIP,
     ):
         if not self.vector_enabled:
             raise RuntimeError("Vector extension is not enabled on this database")
+        table_name = self._embedding_table_for_base(embedding_base)
         vector_literal = self._vector_literal(embedding)
         self.conn.execute(
-            """
-            INSERT INTO capture_embeddings (
+            f"""
+            INSERT INTO {table_name} (
                 capture_id,
                 model_name,
                 model_version,
@@ -719,9 +770,11 @@ class Database:
         capture_vectors: Sequence[Tuple[int, Sequence[float]]],
         model_name: str,
         model_version: str,
+        embedding_base: str = EMBEDDING_BASE_CLIP,
     ) -> int:
         if not self.vector_enabled:
             raise RuntimeError("Vector extension is not enabled on this database")
+        table_name = self._embedding_table_for_base(embedding_base)
         rows = [
             (int(capture_id), model_name, model_version, self._vector_literal(embedding))
             for capture_id, embedding in capture_vectors
@@ -730,8 +783,8 @@ class Database:
             return 0
         with self.conn.cursor() as cur:
             cur.executemany(
-                """
-                INSERT INTO capture_embeddings (
+                f"""
+                INSERT INTO {table_name} (
                     capture_id,
                     model_name,
                     model_version,
@@ -759,9 +812,11 @@ class Database:
         max_top_k: int = 200,
         trace_id: Optional[str] = None,
         ivfflat_probes: Optional[int] = None,
+        embedding_base: str = EMBEDDING_BASE_CLIP,
     ) -> List[dict]:
         if not self.vector_enabled:
             raise RuntimeError("Vector extension is not enabled on this database")
+        table_name = self._embedding_table_for_base(embedding_base)
         vector_literal = self._vector_literal(embedding)
         limit = max(1, min(int(max_top_k), int(top_k)))
         probes = max(
@@ -813,7 +868,7 @@ class Database:
                 p.lat,
                 p.lon,
                 (1 - (ce.embedding <=> %s::vector)) AS similarity
-            FROM capture_embeddings ce
+            FROM {table_name} ce
             JOIN captures c ON c.id = ce.capture_id
             JOIN panoramas p ON p.id = c.panorama_id
             WHERE ce.model_name = %s
@@ -827,8 +882,9 @@ class Database:
         result = [self._normalize_row(dict(row)) for row in rows]
         if trace_id:
             log.info(
-                "retrieval_db trace_id=%s top_k=%s min_similarity=%s returned=%s model=%s version=%s probes=%s",
+                "retrieval_db trace_id=%s base=%s top_k=%s min_similarity=%s returned=%s model=%s version=%s probes=%s",
                 trace_id,
+                self._normalize_embedding_base(embedding_base),
                 limit,
                 min_similarity,
                 len(result),

@@ -1,6 +1,6 @@
 # Retrieval Pipeline Write-Up
 
-This document explains how GeoSpy retrieval works today, why each stage exists, and where the place-recognition model fits in.
+This document explains the current search-only retrieval pipeline, why each stage exists, and where the place-recognition model fits in.
 
 ## What The Pipeline Does
 
@@ -8,32 +8,21 @@ Given a query image, the system tries to:
 
 1. find similar captures in the DB,
 2. combine evidence across crops and models,
-3. reject visually/geometrically inconsistent matches,
-4. produce a final location estimate with confidence and radius.
+3. return a ranked top-K set with similarity scores.
 
 The same embedding stack is used for:
 
 - `search-by-image` (ranked matches),
-- `locate-by-image` (location estimate),
 - background/index backfill pipelines.
 
 ## High-Level Flow
 
 ```mermaid
 flowchart LR
-queryImage[QueryImageUpload] --> cropBuilder[MultiCropBuilder]
-cropBuilder --> clipModel[ClipEmbedder]
-cropBuilder --> placeModel[PlaceRecEmbedder]
-clipModel --> clipSearch[PgVectorSearchClip]
-placeModel --> placeSearch[PgVectorSearchPlace]
-clipSearch --> candidateFusion[CandidateFusionAndVoteCap]
-placeSearch --> candidateFusion
-candidateFusion --> modalRerank[OptionalModalClipRerank]
-modalRerank --> geoCluster[GeoClustering]
-geoCluster --> geomVerify[GeometricVerificationOrbOrLightGlue]
-geomVerify --> appearanceCheck[AppearancePenalty]
-appearanceCheck --> finalScore[HybridScoringAndConfidence]
-finalScore --> estimateOutput[BestEstimateAndSupportingMatches]
+queryImage[QueryImageUpload] --> embedModels[ConfiguredImageEmbedders]
+embedModels --> annSearch[PgVectorANNSearch]
+annSearch --> fusion[MultiModelScoreFusion]
+fusion --> rankedOutput[TopKRankedMatches]
 ```
 
 ## Detailed Stages (And Why)
@@ -56,49 +45,20 @@ The system runs multiple embedders (primary CLIP + optional place branch), then 
 - place-style embeddings are usually better at location-discriminative cues,
 - fusing both is more robust than either alone.
 
-### 3) Candidate fusion + panorama vote cap
+### 3) Candidate fusion
 
-All candidate rows are merged by capture id, weighted by model and crop hits. Then per-panorama contributions are capped.
+All candidate rows are merged by capture id, weighted by model and crop hits.
 
 **Why**:
 - fusion stabilizes ranking across noisy crops,
-- vote cap prevents one panorama from dominating due to many near-duplicate headings.
+### 4) Final ranked output
 
-### 4) Geo clustering
-
-Candidates are grouped by geographic proximity and rescored by cluster evidence.
+After fusion, matches are sorted and returned with `score` / `similarity`.
 
 **Why**:
-- true matches tend to form local geographic consensus,
-- random false positives are often spatially scattered.
-
-### 5) Geometric verification (ORB + RANSAC, optional Modal LightGlue)
-
-Top candidates are image-verified with local keypoints and homography inliers.
-
-**Why**:
-- embedding similarity alone can match wrong but semantically similar scenes,
-- geometric consistency tests whether structures align in image space,
-- LightGlue verification in Modal improves hard partials where ORB is weak.
-
-### 6) Appearance penalty
-
-A lightweight appearance mismatch penalty is applied for obvious color/composition mismatch.
-
-**Why**:
-- helps reject clearly different facades when semantic embedding still scores high.
-
-### 7) Final scoring + confidence/radius
-
-Final score combines vector evidence, geometric score, and penalties. Output includes:
-
-- best estimate (`lat/lon`),
-- confidence (`0..1`),
-- uncertainty radius,
-- supporting matches and debug diagnostics.
-
-**Why**:
-- location decisions should include uncertainty, not just a single point.
+- keeps latency low,
+- keeps behavior predictable and debuggable,
+- provides a stable top match that the UI can auto-focus/highlight.
 
 ## What Is A Place-Recognition Model?
 
@@ -115,22 +75,19 @@ In this pipeline, the place branch is used as a complementary signal, not a full
 
 - **Multi-crop**: improves robustness for partial screenshots.
 - **Multi-model**: reduces single-model failure modes.
-- **Vote cap + clustering**: enforces spatial consensus.
-- **Geometric check**: removes visually inconsistent false positives.
-- **Confidence/radius output**: makes downstream decisions safer than top-1 only.
+- **Score fusion**: combines model evidence while keeping output simple.
 
-This sequence is intentionally staged from cheap to expensive:
+This sequence is intentionally staged for fast query latency:
 
 1. vector retrieval first (fast),
-2. rerank/geom verification only on narrowed candidates (costly),
-3. final confidence on already filtered evidence.
+2. lightweight score fusion on returned candidates.
 
 ## Operational Notes
 
 - Embeddings are generated during ingest and can be backfilled.
 - Index stats report per-model coverage.
 - If one model fails to load/encode, the pipeline can continue with remaining models (degraded mode).
-- Locate tuning is request-level: UI fetches defaults/bounds from `GET /api/retrieval/locate-params` and sends knobs with each `POST /api/retrieval/locate-by-image`.
+- The UI is search-only and highlights the top match automatically.
 
 ## Current Limits
 

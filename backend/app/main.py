@@ -37,7 +37,7 @@ from backend.app.api.retrieval import create_retrieval_router
 from config import CrawlerConfig
 from backend.app.clip_embeddings import (
     encode_image_batch_for_all_models,
-    get_retrieval_embedders,
+    select_retrieval_embedders,
 )
 from db.postgres_database import Database
 from utils.seed_grid import generate_grid
@@ -74,6 +74,9 @@ AUTO_INDEX_INTERVAL_SECONDS = max(
     5, int(os.getenv("GEOSPY_AUTO_INDEX_INTERVAL_SECONDS", "20"))
 )
 AUTO_INDEX_BATCH_SIZE = max(1, int(os.getenv("GEOSPY_AUTO_INDEX_BATCH_SIZE", "4")))
+AUTO_INDEX_EMBEDDING_BASE = str(
+    os.getenv("GEOSPY_AUTO_INDEX_EMBEDDING_BASE", "clip")
+).strip().lower()
 MODAL_PROGRESS_STALE_SECONDS = max(
     30, int(os.getenv("GEOSPY_MODAL_PROGRESS_STALE_SECONDS", "180"))
 )
@@ -194,9 +197,10 @@ async def _startup_auto_index():
     auto_index_stop_event = asyncio.Event()
     auto_index_task = asyncio.create_task(_auto_index_loop())
     log.info(
-        "Auto-indexer started batch_size=%s interval_s=%s",
+        "Auto-indexer started batch_size=%s interval_s=%s embedding_base=%s",
         AUTO_INDEX_BATCH_SIZE,
         AUTO_INDEX_INTERVAL_SECONDS,
+        AUTO_INDEX_EMBEDDING_BASE,
     )
 
 
@@ -302,7 +306,11 @@ def _capture_abs_path(filepath: str) -> str:
 async def _index_missing_embeddings_once(limit: int) -> dict:
     limit = max(1, int(limit))
     try:
-        embedders = list(get_retrieval_embedders())
+        embedders = list(
+            select_retrieval_embedders(
+                AUTO_INDEX_EMBEDDING_BASE, allow_fallback=False
+            )
+        )
     except RuntimeError as exc:
         return {"attempted": 0, "indexed": 0, "skipped": 0, "error": str(exc)}
     if not embedders:
@@ -319,6 +327,7 @@ async def _index_missing_embeddings_once(limit: int) -> dict:
         rows = db.list_captures_missing_any_embeddings(
             [(embedder.model_name, embedder.model_version) for embedder in embedders],
             limit=limit,
+            embedding_base=AUTO_INDEX_EMBEDDING_BASE,
         )
         attempted = len(rows)
         valid_batch = []
@@ -337,6 +346,7 @@ async def _index_missing_embeddings_once(limit: int) -> dict:
                 model_vectors = await asyncio.to_thread(
                     encode_image_batch_for_all_models,
                     [image_bytes for _, image_bytes in valid_batch],
+                    embedders,
                 )
                 if not model_vectors:
                     raise RuntimeError("No retrieval models encoded successfully")
@@ -352,6 +362,9 @@ async def _index_missing_embeddings_once(limit: int) -> dict:
                         ],
                         embedder.model_name,
                         embedder.model_version,
+                        embedding_base=str(
+                            getattr(embedder, "embedding_base", AUTO_INDEX_EMBEDDING_BASE)
+                        ),
                     )
                     model_key = f"{embedder.model_name}:{embedder.model_version}"
                     indexed_by_model[model_key] = indexed_by_model.get(model_key, 0) + int(
@@ -370,6 +383,13 @@ async def _index_missing_embeddings_once(limit: int) -> dict:
                                 embedder.model_name,
                                 embedder.model_version,
                                 vector,
+                                embedding_base=str(
+                                    getattr(
+                                        embedder,
+                                        "embedding_base",
+                                        AUTO_INDEX_EMBEDDING_BASE,
+                                    )
+                                ),
                             )
                             model_key = f"{embedder.model_name}:{embedder.model_version}"
                             indexed_by_model[model_key] = indexed_by_model.get(

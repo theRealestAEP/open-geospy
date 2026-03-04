@@ -23,9 +23,10 @@ log = logging.getLogger(__name__)
 
 app = modal.App("geospy-embeddings")
 DEFAULT_MODAL_ENVIRONMENT = os.getenv("GEOSPY_MODAL_EMBED_ENVIRONMENT", "google-map-walkers")
-DEFAULT_MAX_WORKERS = max(1, int(os.getenv("GEOSPY_MODAL_EMBED_MAX_WORKERS", "16")))
+DEFAULT_MAX_WORKERS = max(1, int(os.getenv("GEOSPY_MODAL_EMBED_MAX_WORKERS", "64")))
 DEFAULT_BATCH_SIZE = max(1, int(os.getenv("GEOSPY_MODAL_EMBED_BATCH_SIZE", "64")))
 DEFAULT_MAX_RETRIES = max(0, int(os.getenv("GEOSPY_MODAL_EMBED_MAX_RETRIES", "1")))
+MODAL_HF_SECRET_NAME = os.getenv("GEOSPY_MODAL_HF_SECRET_NAME", "").strip()
 
 _modal_app_context_lock = threading.Lock()
 _modal_app_context_manager = None
@@ -34,8 +35,34 @@ _modal_app_context_refcount = 0
 
 embedding_image = (
     modal.Image.debian_slim(python_version="3.11")
-    .pip_install("open-clip-torch>=2.24.0", "torch>=2.3.0", "Pillow>=10.0.0")
+    .pip_install(
+        "open-clip-torch>=2.24.0",
+        "torch>=2.3.0",
+        "Pillow>=10.0.0",
+        "transformers>=4.41.0",
+    )
 )
+
+
+def _resolve_worker_secrets() -> List[modal.Secret]:
+    secrets: List[modal.Secret] = []
+    if MODAL_HF_SECRET_NAME:
+        secrets.append(modal.Secret.from_name(MODAL_HF_SECRET_NAME))
+        return secrets
+    hf_token = os.getenv("HF_TOKEN") or os.getenv("HUGGING_FACE_HUB_TOKEN")
+    if hf_token:
+        secrets.append(
+            modal.Secret.from_dict(
+                {
+                    "HF_TOKEN": str(hf_token),
+                    "HUGGING_FACE_HUB_TOKEN": str(hf_token),
+                }
+            )
+        )
+    return secrets
+
+
+EMBEDDING_WORKER_SECRETS = _resolve_worker_secrets()
 
 
 def _chunk_items(items: List[Tuple[int, bytes]], size: int) -> List[List[Tuple[int, bytes]]]:
@@ -84,6 +111,7 @@ def _shared_modal_app_context(environment_name: str):
     timeout=1800,
     cpu=2.0,
     memory=4096,
+    secrets=EMBEDDING_WORKER_SECRETS,
 )
 def embed_capture_batch(job_payload: dict) -> dict:
     import io
@@ -105,9 +133,10 @@ def embed_capture_batch(job_payload: dict) -> dict:
     try:
         import open_clip
         import torch
+        from transformers import AutoImageProcessor, AutoModel
     except ImportError as exc:
         raise RuntimeError(
-            "Modal embedding dependencies missing (open-clip-torch, torch)."
+            "Modal embedding dependencies missing (open-clip-torch, transformers, torch)."
         ) from exc
 
     if torch.cuda.is_available():
@@ -117,9 +146,11 @@ def embed_capture_batch(job_payload: dict) -> dict:
     else:
         device = "cpu"
 
-    model_cache: Dict[Tuple[str, str], Tuple[object, object]] = {}
+    clip_cache: Dict[Tuple[str, str], Tuple[object, object]] = {}
+    hf_cache: Dict[Tuple[str, bool], Tuple[object, object]] = {}
     decoded_images: List[Tuple[int, object]] = []
     skipped: List[dict] = []
+    hf_token = os.getenv("HF_TOKEN") or os.getenv("HUGGING_FACE_HUB_TOKEN")
 
     for capture_id, image_bytes in zip(capture_ids_raw, image_bytes_raw):
         try:
@@ -150,7 +181,9 @@ def embed_capture_batch(job_payload: dict) -> dict:
         pretrained = str(model.get("pretrained") or "").strip()
         model_version = str(model.get("model_version") or "").strip()
         model_id = str(model.get("model_id") or "").strip()
-        if not model_name or not pretrained:
+        runtime = str(model.get("runtime") or "open_clip").strip().lower()
+        trust_remote_code = bool(model.get("trust_remote_code", False))
+        if not model_name:
             model_errors.append(
                 {
                     "model_name": model_name,
@@ -161,21 +194,64 @@ def embed_capture_batch(job_payload: dict) -> dict:
             )
             continue
         try:
-            cache_key = (model_name, pretrained)
-            if cache_key not in model_cache:
-                clip_model, _, preprocess = open_clip.create_model_and_transforms(
-                    model_name, pretrained=pretrained
-                )
-                clip_model.eval()
-                clip_model.to(device)
-                model_cache[cache_key] = (clip_model, preprocess)
-            clip_model, preprocess = model_cache[cache_key]
+            if runtime == "hf_transformers":
+                cache_key = (model_name, trust_remote_code)
+                if cache_key not in hf_cache:
+                    processor = AutoImageProcessor.from_pretrained(
+                        model_name,
+                        trust_remote_code=trust_remote_code,
+                        token=hf_token,
+                    )
+                    hf_model = AutoModel.from_pretrained(
+                        model_name,
+                        trust_remote_code=trust_remote_code,
+                        token=hf_token,
+                    )
+                    hf_model.eval()
+                    hf_model.to(device)
+                    hf_cache[cache_key] = (processor, hf_model)
+                processor, hf_model = hf_cache[cache_key]
+                images = [image for _, image in decoded_images]
+                inputs = processor(images=images, return_tensors="pt")
+                for key, value in list(inputs.items()):
+                    if hasattr(value, "to"):
+                        inputs[key] = value.to(device)
+                with torch.no_grad():
+                    outputs = hf_model(**inputs)
+                    if getattr(outputs, "pooler_output", None) is not None:
+                        features = outputs.pooler_output
+                    elif getattr(outputs, "last_hidden_state", None) is not None:
+                        features = outputs.last_hidden_state.mean(dim=1)
+                    else:
+                        tensor_out = outputs[0]
+                        features = (
+                            tensor_out.mean(dim=1)
+                            if getattr(tensor_out, "dim", lambda: 0)() == 3
+                            else tensor_out
+                        )
+                    features = features / features.norm(dim=-1, keepdim=True).clamp(
+                        min=1e-12
+                    )
+            else:
+                if not pretrained:
+                    raise RuntimeError("open_clip models require pretrained")
+                cache_key = (model_name, pretrained)
+                if cache_key not in clip_cache:
+                    clip_model, _, preprocess = open_clip.create_model_and_transforms(
+                        model_name, pretrained=pretrained
+                    )
+                    clip_model.eval()
+                    clip_model.to(device)
+                    clip_cache[cache_key] = (clip_model, preprocess)
+                clip_model, preprocess = clip_cache[cache_key]
 
-            tensors = [preprocess(image) for _, image in decoded_images]
-            batch = torch.stack(tensors, dim=0).to(device)
-            with torch.no_grad():
-                features = clip_model.encode_image(batch)
-                features = features / features.norm(dim=-1, keepdim=True).clamp(min=1e-12)
+                tensors = [preprocess(image) for _, image in decoded_images]
+                batch = torch.stack(tensors, dim=0).to(device)
+                with torch.no_grad():
+                    features = clip_model.encode_image(batch)
+                    features = features / features.norm(dim=-1, keepdim=True).clamp(
+                        min=1e-12
+                    )
             vectors = features.detach().cpu().float().tolist()
             model_outputs.append(
                 {
@@ -246,7 +322,7 @@ def dispatch_embedding_jobs(
     model_error_events = 0
     failed_capture_ids: List[int] = []
 
-    workers = max(1, min(100, int(num_workers)))
+    workers = max(1, min(512, int(num_workers)))
     max_retries = max(0, int(max_retries))
     environment_name = (
         modal_environment

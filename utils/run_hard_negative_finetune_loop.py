@@ -23,11 +23,6 @@ def main():
     parser.add_argument("--top-k", type=int, default=20)
     parser.add_argument("--db-max-top-k", type=int, default=5000)
     parser.add_argument("--ivfflat-probes", type=int, default=120)
-    parser.add_argument("--locate-top-k-per-crop", type=int, default=220)
-    parser.add_argument("--locate-max-candidates", type=int, default=5000)
-    parser.add_argument("--locate-verify-top-n", type=int, default=120)
-    parser.add_argument("--locate-min-good-matches", type=int, default=10)
-    parser.add_argument("--locate-min-inlier-ratio", type=float, default=0.14)
     parser.add_argument("--train-model-id", default="clip")
     parser.add_argument("--train-max-triplets", type=int, default=80000)
     parser.add_argument("--train-epochs", type=int, default=4)
@@ -65,23 +60,13 @@ def main():
             "--sample-size",
             str(args.sample_size),
             "--mode",
-            "both",
+            "search",
             "--top-k",
             str(args.top_k),
             "--db-max-top-k",
             str(args.db_max_top_k),
             "--ivfflat-probes",
             str(args.ivfflat_probes),
-            "--locate-top-k-per-crop",
-            str(args.locate_top_k_per_crop),
-            "--locate-max-candidates",
-            str(args.locate_max_candidates),
-            "--locate-verify-top-n",
-            str(args.locate_verify_top_n),
-            "--locate-min-good-matches",
-            str(args.locate_min_good_matches),
-            "--locate-min-inlier-ratio",
-            str(args.locate_min_inlier_ratio),
             "--out-csv",
             results_csv,
             "--hard-negatives-csv",

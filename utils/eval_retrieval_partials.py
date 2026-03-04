@@ -1,9 +1,4 @@
-"""Evaluate retrieval robustness on synthetic partial crops of existing captures.
-
-This harness samples captures from the local DB, generates partial query crops from
-those exact images, and measures whether retrieval returns the original capture or
-at least the same panorama.
-"""
+"""Evaluate search-only retrieval robustness on synthetic partial crops."""
 
 import argparse
 import csv
@@ -16,7 +11,6 @@ from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 from PIL import Image
 
 from backend.app.clip_embeddings import get_retrieval_embedders
-from backend.app.services.retrieval_locator import locate_image_bytes
 from config import CrawlerConfig
 from db.postgres_database import Database
 
@@ -55,7 +49,7 @@ def _crop_variants(image_bytes: bytes, variants: Sequence[str]) -> List[Tuple[st
         img = img.convert("RGB")
         w, h = img.size
 
-        def add_crop(name: str, box: Tuple[int, int, int, int]):
+        def add_crop(name: str, box: Tuple[int, int, int, int]) -> None:
             x0, y0, x1, y1 = box
             if x1 - x0 < 24 or y1 - y0 < 24:
                 return
@@ -122,6 +116,7 @@ def _search_by_image_bytes(
             min_similarity=min_similarity,
             max_top_k=int(db_max_top_k),
             ivfflat_probes=int(ivfflat_probes),
+            embedding_base=str(getattr(embedder, "embedding_base", "clip")),
         )
         model_weight = float(getattr(embedder, "weight", 1.0))
         model_id = str(getattr(embedder, "model_id", embedder.model_name))
@@ -197,7 +192,7 @@ def _percent(numerator: int, denominator: int) -> float:
     return (100.0 * float(numerator)) / float(denominator)
 
 
-def _write_csv(path: str, rows: Iterable[dict]):
+def _write_csv(path: str, rows: Iterable[dict]) -> None:
     rows = list(rows)
     if not rows:
         return
@@ -208,13 +203,13 @@ def _write_csv(path: str, rows: Iterable[dict]):
         writer.writerows(rows)
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Evaluate retrieval hit-rate on synthetic partial crops from DB captures."
+        description="Evaluate search-only retrieval hit-rate on synthetic partial crops."
     )
     parser.add_argument("--sample-size", type=int, default=300)
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--mode", choices=["search", "locate", "both"], default="both")
+    parser.add_argument("--mode", choices=["search", "locate", "both"], default="search")
     parser.add_argument("--top-k", type=int, default=20)
     parser.add_argument("--min-similarity", type=float, default=None)
     parser.add_argument(
@@ -225,13 +220,13 @@ def main():
     )
     parser.add_argument("--db-max-top-k", type=int, default=5000)
     parser.add_argument("--ivfflat-probes", type=int, default=120)
-    parser.add_argument("--locate-top-k-per-crop", type=int, default=220)
-    parser.add_argument("--locate-max-candidates", type=int, default=5000)
-    parser.add_argument("--locate-vote-cap", type=int, default=4)
-    parser.add_argument("--locate-verify-top-n", type=int, default=120)
-    parser.add_argument("--locate-cluster-radius-m", type=float, default=45.0)
-    parser.add_argument("--locate-min-good-matches", type=int, default=11)
-    parser.add_argument("--locate-min-inlier-ratio", type=float, default=0.16)
+    parser.add_argument("--locate-top-k-per-crop", type=int, default=0)
+    parser.add_argument("--locate-max-candidates", type=int, default=0)
+    parser.add_argument("--locate-vote-cap", type=int, default=0)
+    parser.add_argument("--locate-verify-top-n", type=int, default=0)
+    parser.add_argument("--locate-cluster-radius-m", type=float, default=0.0)
+    parser.add_argument("--locate-min-good-matches", type=int, default=0)
+    parser.add_argument("--locate-min-inlier-ratio", type=float, default=0.0)
     parser.add_argument("--out-csv", default="partial_eval_results.csv")
     parser.add_argument(
         "--hard-negatives-csv",
@@ -239,6 +234,13 @@ def main():
         help="Writes rows where exact top1 failed.",
     )
     args = parser.parse_args()
+
+    if str(args.mode).lower() in {"locate", "both"}:
+        print("warning: locate mode is removed; running search-only evaluation.")
+
+    variants = [v.strip() for v in str(args.variants).split(",") if v.strip()]
+    if not variants:
+        variants = ["center60", "center40", "left", "right", "top", "bottom"]
 
     cfg = CrawlerConfig()
     captures_dir = cfg.CAPTURES_DIR
@@ -248,214 +250,93 @@ def main():
     db = Database(cfg.DATABASE_URL)
     embedders = list(get_retrieval_embedders())
     if not embedders:
-        raise SystemExit("No retrieval embedders configured")
+        raise SystemExit("No retrieval embedders configured.")
 
     primary = embedders[0]
-    variants = [v.strip() for v in str(args.variants).split(",") if v.strip()]
-    samples = _sample_capture_rows(
+    sample_rows = _sample_capture_rows(
         db,
         model_name=primary.model_name,
         model_version=primary.model_version,
         sample_size=max(1, int(args.sample_size)),
         seed=int(args.seed),
     )
-    if not samples:
-        raise SystemExit("No captures with embeddings found to evaluate.")
+    if not sample_rows:
+        raise SystemExit("No capture rows available for evaluation.")
 
-    rows_out: List[dict] = []
-    hard_negatives: List[dict] = []
+    result_rows: List[dict] = []
+    hard_rows: List[dict] = []
 
-    search_exact_top1 = 0
-    search_pano_top1 = 0
-    search_exact_topk = 0
-    search_pano_topk = 0
-    locate_exact_top1 = 0
-    locate_pano_top1 = 0
-    locate_exact_topk = 0
-    locate_pano_topk = 0
-    search_exact_ranks: List[int] = []
-    locate_exact_ranks: List[int] = []
+    exact_top1 = 0
+    same_pano_top1 = 0
+    exact_topk = 0
+    same_pano_topk = 0
+    total_cases = 0
 
-    query_total = 0
-    skipped_images = 0
+    for row in sample_rows:
+        capture_id = int(row["capture_id"])
+        panorama_id = int(row["panorama_id"])
+        image_bytes = _read_bytes(_capture_abs_path(captures_dir, str(row.get("filepath", ""))))
+        if not image_bytes:
+            continue
+        crops = _crop_variants(image_bytes, variants)
+        for crop_name, crop_bytes in crops:
+            total_cases += 1
+            ranked = _search_by_image_bytes(
+                db=db,
+                embedders=embedders,
+                image_bytes=crop_bytes,
+                top_k=max(1, int(args.top_k)),
+                min_similarity=args.min_similarity,
+                db_max_top_k=max(200, int(args.db_max_top_k)),
+                ivfflat_probes=max(1, int(args.ivfflat_probes)),
+            )
+            exact_rank, pano_rank = _get_rank(
+                ranked, capture_id=capture_id, panorama_id=panorama_id
+            )
+            if exact_rank == 1:
+                exact_top1 += 1
+            if pano_rank == 1:
+                same_pano_top1 += 1
+            if 0 < exact_rank <= int(args.top_k):
+                exact_topk += 1
+            if 0 < pano_rank <= int(args.top_k):
+                same_pano_topk += 1
 
-    model_weights = {
-        str(getattr(embedder, "model_id", f"model_{idx}")): float(
-            getattr(embedder, "weight", 1.0)
+            top_row = ranked[0] if ranked else {}
+            out = {
+                "capture_id": capture_id,
+                "panorama_id": panorama_id,
+                "crop_name": crop_name,
+                "rank_exact": exact_rank,
+                "rank_panorama": pano_rank,
+                "top_capture_id": int(top_row.get("capture_id", 0)) if top_row else 0,
+                "top_panorama_id": int(top_row.get("panorama_id", 0)) if top_row else 0,
+                "top_similarity": float(top_row.get("similarity", 0.0)) if top_row else 0.0,
+            }
+            result_rows.append(out)
+            if exact_rank != 1:
+                hard_rows.append(out)
+
+    _write_csv(args.out_csv, result_rows)
+    _write_csv(args.hard_negatives_csv, hard_rows)
+
+    print(f"cases={total_cases}")
+    print(
+        "search exact@1={:.2f}% pano@1={:.2f}% exact@{}={:.2f}% pano@{}={:.2f}%".format(
+            _percent(exact_top1, total_cases),
+            _percent(same_pano_top1, total_cases),
+            int(args.top_k),
+            _percent(exact_topk, total_cases),
+            int(args.top_k),
+            _percent(same_pano_topk, total_cases),
         )
-        for idx, embedder in enumerate(embedders)
-    }
-
-    try:
-        for sample in samples:
-            capture_id = int(sample["capture_id"])
-            panorama_id = int(sample["panorama_id"])
-            abs_path = _capture_abs_path(captures_dir, str(sample.get("filepath", "")))
-            image_bytes = _read_bytes(abs_path)
-            if image_bytes is None:
-                skipped_images += 1
-                continue
-            for variant_name, query_bytes in _crop_variants(image_bytes, variants):
-                query_total += 1
-                row_base = {
-                    "query_capture_id": capture_id,
-                    "query_panorama_id": panorama_id,
-                    "query_variant": variant_name,
-                }
-
-                if args.mode in {"search", "both"}:
-                    search_rows = _search_by_image_bytes(
-                        db,
-                        embedders,
-                        query_bytes,
-                        top_k=max(1, int(args.top_k)),
-                        min_similarity=args.min_similarity,
-                        db_max_top_k=max(200, int(args.db_max_top_k)),
-                        ivfflat_probes=max(1, int(args.ivfflat_probes)),
-                    )
-                    exact_rank, pano_rank = _get_rank(
-                        search_rows,
-                        capture_id=capture_id,
-                        panorama_id=panorama_id,
-                    )
-                    if exact_rank == 1:
-                        search_exact_top1 += 1
-                    if pano_rank == 1:
-                        search_pano_top1 += 1
-                    if 0 < exact_rank <= int(args.top_k):
-                        search_exact_topk += 1
-                        search_exact_ranks.append(exact_rank)
-                    if 0 < pano_rank <= int(args.top_k):
-                        search_pano_topk += 1
-                    top = search_rows[0] if search_rows else {}
-                    rows_out.append(
-                        {
-                            **row_base,
-                            "mode": "search",
-                            "exact_rank": exact_rank,
-                            "pano_rank": pano_rank,
-                            "top_capture_id": int(top.get("capture_id", 0))
-                            if top
-                            else 0,
-                            "top_panorama_id": int(top.get("panorama_id", 0))
-                            if top
-                            else 0,
-                            "top_similarity": float(top.get("similarity", 0.0))
-                            if top
-                            else 0.0,
-                        }
-                    )
-                    if exact_rank != 1 and top:
-                        hard_negatives.append(
-                            {
-                                **row_base,
-                                "mode": "search",
-                                "pred_capture_id": int(top.get("capture_id", 0)),
-                                "pred_panorama_id": int(top.get("panorama_id", 0)),
-                                "pred_score": float(top.get("score", 0.0)),
-                                "pred_similarity": float(top.get("similarity", 0.0)),
-                                "expected_capture_id": capture_id,
-                                "expected_panorama_id": panorama_id,
-                            }
-                        )
-
-                if args.mode in {"locate", "both"}:
-                    locate_result = locate_image_bytes(
-                        image_bytes=query_bytes,
-                        db=db,
-                        embedders=embedders,
-                        capture_abs_path=lambda fp: _capture_abs_path(captures_dir, fp),
-                        top_k_per_crop=max(20, int(args.locate_top_k_per_crop)),
-                        max_merged_candidates=max(100, int(args.locate_max_candidates)),
-                        panorama_vote_cap=max(1, int(args.locate_vote_cap)),
-                        cluster_radius_m=float(args.locate_cluster_radius_m),
-                        verify_top_n=max(5, int(args.locate_verify_top_n)),
-                        min_similarity=args.min_similarity,
-                        model_weights=model_weights,
-                        min_good_matches=max(4, int(args.locate_min_good_matches)),
-                        min_inlier_ratio=max(0.01, float(args.locate_min_inlier_ratio)),
-                        db_max_top_k=max(200, int(args.db_max_top_k)),
-                        ivfflat_probes=max(1, int(args.ivfflat_probes)),
-                        include_debug=False,
-                    )
-                    support = locate_result.get("supporting_matches") or []
-                    exact_rank, pano_rank = _get_rank(
-                        support,
-                        capture_id=capture_id,
-                        panorama_id=panorama_id,
-                    )
-                    if exact_rank == 1:
-                        locate_exact_top1 += 1
-                    if pano_rank == 1:
-                        locate_pano_top1 += 1
-                    if 0 < exact_rank <= int(args.top_k):
-                        locate_exact_topk += 1
-                        locate_exact_ranks.append(exact_rank)
-                    if 0 < pano_rank <= int(args.top_k):
-                        locate_pano_topk += 1
-                    top = support[0] if support else {}
-                    rows_out.append(
-                        {
-                            **row_base,
-                            "mode": "locate",
-                            "exact_rank": exact_rank,
-                            "pano_rank": pano_rank,
-                            "top_capture_id": int(top.get("capture_id", 0))
-                            if top
-                            else 0,
-                            "top_panorama_id": int(top.get("panorama_id", 0))
-                            if top
-                            else 0,
-                            "top_score": float(top.get("score", 0.0)) if top else 0.0,
-                            "flags": ",".join(locate_result.get("flags") or []),
-                        }
-                    )
-                    if exact_rank != 1 and top:
-                        hard_negatives.append(
-                            {
-                                **row_base,
-                                "mode": "locate",
-                                "pred_capture_id": int(top.get("capture_id", 0)),
-                                "pred_panorama_id": int(top.get("panorama_id", 0)),
-                                "pred_score": float(top.get("score", 0.0)),
-                                "pred_similarity": float(top.get("similarity", 0.0)),
-                                "expected_capture_id": capture_id,
-                                "expected_panorama_id": panorama_id,
-                            }
-                        )
-    finally:
-        db.close()
-
-    print(f"sampled_captures={len(samples)}")
-    print(f"query_total={query_total}")
-    print(f"skipped_images={skipped_images}")
-    if args.mode in {"search", "both"} and query_total > 0:
-        print(
-            "search "
-            f"exact_top1={search_exact_top1}/{query_total} ({_percent(search_exact_top1, query_total):.2f}%) "
-            f"pano_top1={search_pano_top1}/{query_total} ({_percent(search_pano_top1, query_total):.2f}%) "
-            f"exact_top{args.top_k}={search_exact_topk}/{query_total} ({_percent(search_exact_topk, query_total):.2f}%) "
-            f"pano_top{args.top_k}={search_pano_topk}/{query_total} ({_percent(search_pano_topk, query_total):.2f}%)"
-        )
-        if search_exact_ranks:
-            print(f"search_median_exact_rank={median(search_exact_ranks):.2f}")
-    if args.mode in {"locate", "both"} and query_total > 0:
-        print(
-            "locate "
-            f"exact_top1={locate_exact_top1}/{query_total} ({_percent(locate_exact_top1, query_total):.2f}%) "
-            f"pano_top1={locate_pano_top1}/{query_total} ({_percent(locate_pano_top1, query_total):.2f}%) "
-            f"exact_top{args.top_k}={locate_exact_topk}/{query_total} ({_percent(locate_exact_topk, query_total):.2f}%) "
-            f"pano_top{args.top_k}={locate_pano_topk}/{query_total} ({_percent(locate_pano_topk, query_total):.2f}%)"
-        )
-        if locate_exact_ranks:
-            print(f"locate_median_exact_rank={median(locate_exact_ranks):.2f}")
-
-    out_csv = os.path.abspath(args.out_csv)
-    hard_csv = os.path.abspath(args.hard_negatives_csv)
-    _write_csv(out_csv, rows_out)
-    _write_csv(hard_csv, hard_negatives)
-    print(f"saved_results={out_csv}")
-    print(f"saved_hard_negatives={hard_csv}")
+    )
+    if result_rows:
+        rank_values = [r["rank_exact"] for r in result_rows if int(r["rank_exact"]) > 0]
+        if rank_values:
+            print(f"median_exact_rank={median(rank_values):.2f}")
+    print(f"results_csv={args.out_csv}")
+    print(f"hard_negatives_csv={args.hard_negatives_csv}")
 
 
 if __name__ == "__main__":
