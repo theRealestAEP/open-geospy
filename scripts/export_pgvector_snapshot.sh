@@ -94,9 +94,15 @@ if [[ -n "$RELEASE_TAG" ]]; then
     ls "${part_prefix}"* | while read -r part; do
       basename "$part"
     done > "$manifest_file"
+    total_parts="$(wc -l < "$manifest_file" | tr -d ' ')"
+    current_part=0
     while read -r part_name; do
+      [[ -z "$part_name" ]] && continue
+      current_part=$((current_part + 1))
+      echo "Uploading part ${current_part}/${total_parts}: ${part_name}"
       gh release upload "$RELEASE_TAG" "$(dirname "$OUTPUT_FILE")/$part_name" --clobber
     done < "$manifest_file"
+    echo "Uploading parts manifest: $(basename "$manifest_file")"
     gh release upload "$RELEASE_TAG" "$manifest_file" --clobber
     echo "Uploaded parts + manifest:"
     echo "  manifest: $(basename "$manifest_file")"

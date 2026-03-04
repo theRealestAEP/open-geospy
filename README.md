@@ -1,8 +1,78 @@
 # Open Geospy
 
-An end-to-end framework that simulates core `geospy.ai` functionality, from Street View scraping and dataset building to image retrieval and location estimation from partial screenshots.
+Open Geospy is a street-view crawling and visual search stack.
 
-It combines crawl orchestration, embedding/index pipelines, interactive map operations, and high-accuracy locate workflows in one stack.
+This repo is currently focused on:
+- collecting Street View image data into Postgres + local files,
+- indexing embeddings for image similarity search,
+- running search in the UI with top-match map focus/highlight.
+
+## Quick Start (Backend + Frontend)
+
+### 1) Clone + install dependencies
+
+```bash
+git clone https://github.com/theRealestAEP/open-geospy.git
+cd open-geospy
+
+cp env.example .env
+pip install -r requirements.txt
+playwright install chromium
+```
+
+### 2) Start Postgres (pgvector)
+
+```bash
+docker compose up -d postgres
+```
+
+Quick reset/rebuild helper:
+
+```bash
+# Empty schema rebuild
+./scripts/rebuild_db.sh
+
+# Rebuild from a snapshot file
+./scripts/rebuild_db.sh --snapshot-file backups/<snapshot-file>.sql.gz
+```
+
+### 3) Run backend API
+
+```bash
+python -m backend.app.main
+```
+
+Backend runs on `http://localhost:8000`.
+
+### 4) Run frontend (Vite dev server)
+
+In a second terminal:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Frontend runs on `http://127.0.0.1:5173` and proxies `/api` + `/captures` to backend.
+
+## How Image Search Works
+
+1. Open the **Search** page.
+2. Upload a reference image.
+3. Click **Search by image**.
+4. Backend embeds the query and runs pgvector nearest-neighbor search.
+5. UI lists top matches and auto-focuses/highlights the best match on the map.
+6. If no local image is available for a result, clicking it drops a dot and opens Street View.
+
+## Add More Image Data (Later)
+
+Once the app is running, you can expand coverage using the **Scan** page:
+- draw area (polygon/free-draw),
+- start `scan` / `enrich` / `fill` jobs,
+- monitor progress in the sidebar.
+
+You can also share a pre-indexed DB snapshot via GitHub Releases (see the snapshot section below).
 
 ## Architecture
 
@@ -361,6 +431,7 @@ seeds/               Generated scan seed CSVs
 utils/seed_grid.py   Bounding box to seed grid generator
 utils/seed_filter_roads.py OSM road proximity filter (pre-filter for water/empty)
 utils/backup_postgres.py Local Postgres backup helper
+scripts/rebuild_db.sh Simple DB reset/rebuild helper (empty schema or snapshot restore)
 scripts/export_pgvector_snapshot.sh Create/upload compressed DB snapshot (GitHub Releases asset)
 scripts/install_from_pgvector_snapshot.sh Bootstrap local DB from snapshot URL/file
 utils/index_capture_embeddings.py CLIP embedding backfill script
