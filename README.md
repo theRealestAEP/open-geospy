@@ -140,7 +140,3 @@ python -m utils.index_capture_embeddings \
 - `scripts/export_pgvector_snapshot.sh` - export/upload snapshot.
 - `scripts/install_from_pgvector_snapshot.sh` - restore snapshot (single file or multipart).
 - `utils/index_capture_embeddings.py` - (re)index embeddings.
-
-## Docs
-
-- `docs/retrieval_pipeline.md` - retrieval architecture notes.
