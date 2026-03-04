@@ -112,5 +112,3 @@ if [[ -n "$RELEASE_TAG" ]]; then
     echo "    --parts-manifest-url https://github.com/<org>/<repo>/releases/download/${RELEASE_TAG}/$(basename "$manifest_file")"
   fi
 fi
-
-echo "Tip: avoid committing DB dumps to git; use GitHub Releases assets instead."
