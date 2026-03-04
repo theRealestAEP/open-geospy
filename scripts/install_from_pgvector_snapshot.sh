@@ -6,6 +6,8 @@ DB_NAME="${DB_NAME:-geospy}"
 DB_USER="${DB_USER:-geospy}"
 SNAPSHOT_URL=""
 SNAPSHOT_FILE=""
+PARTS_BASE_URL=""
+PARTS_MANIFEST_URL=""
 COMPOSE_UP="1"
 SKIP_DROP="0"
 
@@ -31,6 +33,14 @@ while [[ $# -gt 0 ]]; do
       SNAPSHOT_FILE="$2"
       shift 2
       ;;
+    --parts-base-url)
+      PARTS_BASE_URL="$2"
+      shift 2
+      ;;
+    --parts-manifest-url)
+      PARTS_MANIFEST_URL="$2"
+      shift 2
+      ;;
     --no-compose-up)
       COMPOSE_UP="0"
       shift
@@ -46,12 +56,20 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ -z "$SNAPSHOT_URL" && -z "$SNAPSHOT_FILE" ]]; then
-  echo "Provide --snapshot-url or --snapshot-file" >&2
+if [[ -z "$SNAPSHOT_URL" && -z "$SNAPSHOT_FILE" && -z "$PARTS_MANIFEST_URL" ]]; then
+  echo "Provide --snapshot-url, --snapshot-file, or --parts-manifest-url with --parts-base-url" >&2
   exit 1
 fi
-if [[ -n "$SNAPSHOT_URL" && -n "$SNAPSHOT_FILE" ]]; then
-  echo "Use either --snapshot-url or --snapshot-file, not both." >&2
+mode_count=0
+[[ -n "$SNAPSHOT_URL" ]] && mode_count=$((mode_count + 1))
+[[ -n "$SNAPSHOT_FILE" ]] && mode_count=$((mode_count + 1))
+[[ -n "$PARTS_MANIFEST_URL" ]] && mode_count=$((mode_count + 1))
+if [[ "$mode_count" -gt 1 ]]; then
+  echo "Use one install mode: single URL, single file, or multi-part manifest." >&2
+  exit 1
+fi
+if [[ -n "$PARTS_MANIFEST_URL" && -z "$PARTS_BASE_URL" ]]; then
+  echo "--parts-base-url is required with --parts-manifest-url" >&2
   exit 1
 fi
 
@@ -73,6 +91,22 @@ if [[ -n "$SNAPSHOT_URL" ]]; then
   WORK_FILE="$(mktemp /tmp/geospy_snapshot_XXXXXX.sql.gz)"
   echo "Downloading snapshot: ${SNAPSHOT_URL}"
   curl -L --fail --output "$WORK_FILE" "$SNAPSHOT_URL"
+elif [[ -n "$PARTS_MANIFEST_URL" ]]; then
+  manifest_file="$(mktemp /tmp/geospy_snapshot_parts_XXXXXX.txt)"
+  WORK_FILE="$(mktemp /tmp/geospy_snapshot_merged_XXXXXX.sql.gz)"
+  echo "Downloading parts manifest: ${PARTS_MANIFEST_URL}"
+  curl -L --fail --output "$manifest_file" "$PARTS_MANIFEST_URL"
+  : > "$WORK_FILE"
+  while IFS= read -r part_name; do
+    [[ -z "$part_name" ]] && continue
+    part_url="${PARTS_BASE_URL%/}/${part_name}"
+    part_tmp="$(mktemp /tmp/geospy_snapshot_part_XXXXXX.bin)"
+    echo "Downloading part: ${part_url}"
+    curl -L --fail --output "$part_tmp" "$part_url"
+    cat "$part_tmp" >> "$WORK_FILE"
+    rm -f "$part_tmp"
+  done < "$manifest_file"
+  rm -f "$manifest_file"
 else
   WORK_FILE="$SNAPSHOT_FILE"
 fi
@@ -105,7 +139,7 @@ fi
 echo "Running ANALYZE"
 docker exec -i "$CONTAINER_NAME" psql -v ON_ERROR_STOP=1 -U "$DB_USER" -d "$DB_NAME" -c "ANALYZE;"
 
-if [[ -n "$SNAPSHOT_URL" ]]; then
+if [[ -n "$SNAPSHOT_URL" || -n "$PARTS_MANIFEST_URL" ]]; then
   rm -f "$WORK_FILE"
 fi
 

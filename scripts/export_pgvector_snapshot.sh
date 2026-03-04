@@ -7,6 +7,7 @@ DB_USER="${DB_USER:-geospy}"
 OUTPUT_DIR="${OUTPUT_DIR:-backups}"
 OUTPUT_PREFIX="${OUTPUT_PREFIX:-geospy_pgvector_snapshot}"
 RELEASE_TAG=""
+MAX_RELEASE_ASSET_MB="${MAX_RELEASE_ASSET_MB:-1900}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -32,6 +33,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --release-tag)
       RELEASE_TAG="$2"
+      shift 2
+      ;;
+    --max-release-asset-mb)
+      MAX_RELEASE_ASSET_MB="$2"
       shift 2
       ;;
     *)
@@ -62,9 +67,31 @@ if [[ -n "$RELEASE_TAG" ]]; then
     echo "Creating release ${RELEASE_TAG}"
     gh release create "$RELEASE_TAG" --title "$RELEASE_TAG" --notes "PGVector snapshot"
   fi
-  echo "Uploading snapshot to release ${RELEASE_TAG}"
-  gh release upload "$RELEASE_TAG" "$OUTPUT_FILE" --clobber
-  echo "Upload complete."
+  file_bytes="$(wc -c < "$OUTPUT_FILE" | tr -d ' ')"
+  max_bytes="$((MAX_RELEASE_ASSET_MB * 1024 * 1024))"
+  if [[ "$file_bytes" -le "$max_bytes" ]]; then
+    echo "Uploading snapshot to release ${RELEASE_TAG}"
+    gh release upload "$RELEASE_TAG" "$OUTPUT_FILE" --clobber
+    echo "Upload complete."
+  else
+    echo "Snapshot exceeds per-asset limit; splitting into ${MAX_RELEASE_ASSET_MB}MB chunks"
+    part_prefix="${OUTPUT_FILE}.part-"
+    split -b "${MAX_RELEASE_ASSET_MB}m" -d -a 4 "$OUTPUT_FILE" "$part_prefix"
+    manifest_file="${OUTPUT_FILE}.parts.txt"
+    ls "${part_prefix}"* | while read -r part; do
+      basename "$part"
+    done > "$manifest_file"
+    while read -r part_name; do
+      gh release upload "$RELEASE_TAG" "$(dirname "$OUTPUT_FILE")/$part_name" --clobber
+    done < "$manifest_file"
+    gh release upload "$RELEASE_TAG" "$manifest_file" --clobber
+    echo "Uploaded parts + manifest:"
+    echo "  manifest: $(basename "$manifest_file")"
+    echo "Restore with:"
+    echo "  ./scripts/install_from_pgvector_snapshot.sh \\"
+    echo "    --parts-base-url https://github.com/<org>/<repo>/releases/download/${RELEASE_TAG} \\"
+    echo "    --parts-manifest-url https://github.com/<org>/<repo>/releases/download/${RELEASE_TAG}/$(basename "$manifest_file")"
+  fi
 fi
 
 echo "Tip: avoid committing DB dumps to git; use GitHub Releases assets instead."

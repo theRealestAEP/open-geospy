@@ -188,6 +188,15 @@ Do not commit DB dumps into git history. Use a Release asset instead.
   --snapshot-url https://github.com/<org>/<repo>/releases/download/data-snapshot-v1/<snapshot-file>.sql.gz
 ```
 
+If the snapshot is larger than GitHub's per-asset limit, the export script auto-splits into parts
+and uploads a `<snapshot>.parts.txt` manifest. Restore with:
+
+```bash
+./scripts/install_from_pgvector_snapshot.sh \
+  --parts-base-url https://github.com/<org>/<repo>/releases/download/data-snapshot-v1 \
+  --parts-manifest-url https://github.com/<org>/<repo>/releases/download/data-snapshot-v1/<snapshot-file>.parts.txt
+```
+
 If you already downloaded a dump locally:
 
 ```bash
