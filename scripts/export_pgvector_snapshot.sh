@@ -8,6 +8,7 @@ OUTPUT_DIR="${OUTPUT_DIR:-backups}"
 OUTPUT_PREFIX="${OUTPUT_PREFIX:-geospy_pgvector_snapshot}"
 RELEASE_TAG=""
 MAX_RELEASE_ASSET_MB="${MAX_RELEASE_ASSET_MB:-1900}"
+EXISTING_SNAPSHOT_FILE=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -35,6 +36,10 @@ while [[ $# -gt 0 ]]; do
       RELEASE_TAG="$2"
       shift 2
       ;;
+    --snapshot-file)
+      EXISTING_SNAPSHOT_FILE="$2"
+      shift 2
+      ;;
     --max-release-asset-mb)
       MAX_RELEASE_ASSET_MB="$2"
       shift 2
@@ -47,13 +52,21 @@ while [[ $# -gt 0 ]]; do
 done
 
 mkdir -p "$OUTPUT_DIR"
-TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
-OUTPUT_FILE="${OUTPUT_DIR}/${OUTPUT_PREFIX}_${TIMESTAMP}.sql.gz"
-
-echo "Exporting ${DB_NAME} from container ${CONTAINER_NAME} to ${OUTPUT_FILE}"
-docker exec -i "$CONTAINER_NAME" \
-  pg_dump -U "$DB_USER" -d "$DB_NAME" --format=plain --no-owner --no-privileges \
-  | gzip -9 > "$OUTPUT_FILE"
+if [[ -n "$EXISTING_SNAPSHOT_FILE" ]]; then
+  OUTPUT_FILE="$EXISTING_SNAPSHOT_FILE"
+  if [[ ! -f "$OUTPUT_FILE" ]]; then
+    echo "Snapshot file not found: $OUTPUT_FILE" >&2
+    exit 1
+  fi
+  echo "Using existing snapshot: ${OUTPUT_FILE}"
+else
+  TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
+  OUTPUT_FILE="${OUTPUT_DIR}/${OUTPUT_PREFIX}_${TIMESTAMP}.sql.gz"
+  echo "Exporting ${DB_NAME} from container ${CONTAINER_NAME} to ${OUTPUT_FILE}"
+  docker exec -i "$CONTAINER_NAME" \
+    pg_dump -U "$DB_USER" -d "$DB_NAME" --format=plain --no-owner --no-privileges \
+    | gzip -9 > "$OUTPUT_FILE"
+fi
 
 echo "Snapshot created: ${OUTPUT_FILE}"
 echo "Size: $(du -h "$OUTPUT_FILE" | awk '{print $1}')"

@@ -183,6 +183,9 @@ Do not commit DB dumps into git history. Use a Release asset instead.
 # 1) Create a compressed SQL snapshot (optionally upload to an existing/new release tag)
 ./scripts/export_pgvector_snapshot.sh --release-tag data-snapshot-v1
 
+# If you already have a local dump, skip re-export and upload that file:
+# ./scripts/export_pgvector_snapshot.sh --snapshot-file backups/<snapshot-file>.sql.gz --release-tag data-snapshot-v1
+
 # 2) Teammates restore from release URL
 ./scripts/install_from_pgvector_snapshot.sh \
   --snapshot-url https://github.com/<org>/<repo>/releases/download/data-snapshot-v1/<snapshot-file>.sql.gz
