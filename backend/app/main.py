@@ -34,6 +34,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from backend.app.api.retrieval import create_retrieval_router
+from backend.app.vector_store import build_vector_store, get_configured_vector_backend
 from config import CrawlerConfig
 from backend.app.clip_embeddings import (
     encode_image_batch_for_all_models,
@@ -46,6 +47,7 @@ from worker.water_filter import filter_water_points
 log = logging.getLogger(__name__)
 app = FastAPI(title="Street View Coverage Tracker")
 config = CrawlerConfig()
+VECTOR_BACKEND = get_configured_vector_backend()
 BASE_DIR = PROJECT_ROOT
 oneshot_lock: Optional[asyncio.Lock] = None
 MODAL_ENVIRONMENT = os.getenv("MODAL_ENVIRONMENT", "google-map-walkers")
@@ -186,9 +188,19 @@ def get_db():
     return Database(config.DATABASE_URL)
 
 
+def get_vector_store(db):
+    return build_vector_store(db)
+
+
 @app.on_event("startup")
 async def _startup_auto_index():
     global auto_index_task, auto_index_stop_event
+    if VECTOR_BACKEND != "postgres":
+        log.info(
+            "Auto-indexer disabled for vector backend=%s (search-only mode)",
+            VECTOR_BACKEND,
+        )
+        return
     if not AUTO_INDEX_ENABLED:
         log.info("Auto-indexer disabled (GEOSPY_AUTO_INDEX_ENABLED=0)")
         return
@@ -304,6 +316,13 @@ def _capture_abs_path(filepath: str) -> str:
 
 
 async def _index_missing_embeddings_once(limit: int) -> dict:
+    if VECTOR_BACKEND != "postgres":
+        return {
+            "attempted": 0,
+            "indexed": 0,
+            "skipped": 0,
+            "error": f"vector-backend-{VECTOR_BACKEND}-search-only",
+        }
     limit = max(1, int(limit))
     try:
         embedders = list(
@@ -641,6 +660,7 @@ app.include_router(
         get_db=get_db,
         capture_web_path=_capture_web_path,
         capture_abs_path=_capture_abs_path,
+        get_vector_store=get_vector_store,
     )
 )
 

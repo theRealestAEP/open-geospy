@@ -540,6 +540,41 @@ class Database:
         ).fetchall()
         return [self._normalize_row(dict(row)) for row in rows]
 
+    def get_total_capture_count(self) -> int:
+        row = self.conn.execute("SELECT COUNT(*) AS c FROM captures").fetchone()
+        return int(row["c"] if row else 0)
+
+    def get_capture_metadata_for_capture_ids(
+        self, capture_ids: Sequence[int]
+    ) -> Dict[int, dict]:
+        normalized_ids = [int(capture_id) for capture_id in capture_ids if capture_id]
+        if not normalized_ids:
+            return {}
+        rows = self.conn.execute(
+            """
+            SELECT
+                c.id AS capture_id,
+                c.panorama_id,
+                c.heading,
+                c.pitch,
+                c.capture_profile,
+                c.capture_kind,
+                c.filepath,
+                p.pano_id,
+                p.lat,
+                p.lon
+            FROM captures c
+            JOIN panoramas p ON p.id = c.panorama_id
+            WHERE c.id = ANY(%s)
+            """,
+            (normalized_ids,),
+        ).fetchall()
+        by_capture_id: Dict[int, dict] = {}
+        for row in rows:
+            normalized = self._normalize_row(dict(row))
+            by_capture_id[int(normalized["capture_id"])] = normalized
+        return by_capture_id
+
     def get_existing_capture_views(
         self, panorama_id: int, capture_profile: Optional[str] = None
     ) -> set[Tuple[float, float]]:

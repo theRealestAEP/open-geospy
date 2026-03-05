@@ -57,6 +57,40 @@ npm run dev
 
 Frontend: `http://127.0.0.1:5173`
 
+## Optional: Run Retrieval on Local LanceDB
+
+This keeps Postgres for operational metadata (`panoramas`, `captures`, scan state) and
+uses LanceDB for vector search.
+
+1) Sync vectors from pgvector into a local Lance table:
+
+```bash
+python scripts/sync_pgvector_to_lancedb.py \
+  --lance-uri .lancedb \
+  --table capture_embeddings \
+  --mode overwrite \
+  --create-index
+```
+
+2) Switch backend to LanceDB:
+
+```bash
+export GEOSPY_VECTOR_BACKEND=lancedb
+export GEOSPY_LANCEDB_URI=.lancedb
+export GEOSPY_LANCEDB_TABLE=capture_embeddings
+python -m backend.app.main
+```
+
+Publish local LanceDB snapshot to a GitHub release:
+
+```bash
+./scripts/export_lancedb_snapshot.sh --release-tag data-snapshot-v1-lancedb
+```
+
+Notes:
+- Lance mode is currently search-only for embeddings (`/api/retrieval/index-missing` disabled).
+- Switch back at any time with `GEOSPY_VECTOR_BACKEND=postgres`.
+
 ## Search Flow
 
 1. Open the `Search` page.
@@ -138,5 +172,7 @@ python -m utils.index_capture_embeddings \
 
 - `scripts/rebuild_db.sh` - reset/rebuild DB.
 - `scripts/export_pgvector_snapshot.sh` - export/upload snapshot.
+- `scripts/export_lancedb_snapshot.sh` - archive/upload `.lancedb` snapshot.
 - `scripts/install_from_pgvector_snapshot.sh` - restore snapshot (single file or multipart).
+- `scripts/sync_pgvector_to_lancedb.py` - copy `capture_embeddings` into LanceDB.
 - `utils/index_capture_embeddings.py` - (re)index embeddings.

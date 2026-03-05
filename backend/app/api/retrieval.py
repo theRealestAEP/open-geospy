@@ -89,8 +89,14 @@ def create_retrieval_router(
     get_db: Callable[[], object],
     capture_web_path: Callable[[str], str],
     capture_abs_path: Callable[[str], str],
+    get_vector_store: Optional[Callable[[object], object]] = None,
 ) -> APIRouter:
     router = APIRouter()
+
+    def _resolve_vector_store(db):
+        if get_vector_store:
+            return get_vector_store(db)
+        return db
 
     def _embedders_for_base_or_400(embedding_base: str):
         try:
@@ -109,7 +115,7 @@ def create_retrieval_router(
             ),
         )
 
-    def _select_query_embedders(db, embedders, embedding_base: str):
+    def _select_query_embedders(vector_store, embedders, embedding_base: str):
         if not embedders:
             return [], []
         if RETRIEVAL_MIN_MODEL_COVERAGE <= 0.0 or len(embedders) <= 1:
@@ -117,7 +123,7 @@ def create_retrieval_router(
         selected = []
         skipped = []
         for idx, embedder in enumerate(embedders):
-            stats = db.get_capture_embedding_stats(
+            stats = vector_store.get_capture_embedding_stats(
                 embedder.model_name,
                 embedder.model_version,
                 embedding_base=embedding_base,
@@ -149,12 +155,13 @@ def create_retrieval_router(
         retrieval_id = new_retrieval_id()
         log_retrieval_event(retrieval_id, "index_stats_started")
         db = get_db()
+        vector_store = _resolve_vector_store(db)
         try:
             embedders = list(get_retrieval_embedders())
             model_stats = []
             for embedder in embedders:
                 model_stats.append(
-                    db.get_capture_embedding_stats(
+                    vector_store.get_capture_embedding_stats(
                         embedder.model_name,
                         embedder.model_version,
                         embedding_base=str(
@@ -163,7 +170,7 @@ def create_retrieval_router(
                     )
                 )
             primary = model_stats[0] if model_stats else {
-                "vector_enabled": db.is_vector_ready(),
+                "vector_enabled": vector_store.is_vector_ready(),
                 "model_name": "",
                 "model_version": "",
                 "total_captures": 0,
@@ -234,14 +241,15 @@ def create_retrieval_router(
             raise HTTPException(status_code=400, detail=f"Image embedding failed: {exc}")
 
         db = get_db()
+        vector_store = _resolve_vector_store(db)
         try:
-            if not db.is_vector_ready():
+            if not vector_store.is_vector_ready():
                 raise HTTPException(
                     status_code=503,
-                    detail="Vector extension is unavailable. Use a pgvector-enabled Postgres image.",
+                    detail="Vector search backend is unavailable. Check vector backend configuration.",
                 )
             active_embedders, coverage_skipped_models = _select_query_embedders(
-                db, embedders, embedding_base
+                vector_store, embedders, embedding_base
             )
             if coverage_skipped_models:
                 log_retrieval_event(
@@ -271,7 +279,7 @@ def create_retrieval_router(
                     )
                     continue
                 t_query = time.perf_counter()
-                rows = db.search_captures_by_embedding(
+                rows = vector_store.search_captures_by_embedding(
                     vector,
                     embedder.model_name,
                     embedder.model_version,
@@ -402,19 +410,32 @@ def create_retrieval_router(
             raise HTTPException(status_code=503, detail=str(exc))
 
         db = get_db()
+        vector_store = _resolve_vector_store(db)
         indexed = 0
         skipped = 0
         failed = []
         model_indexed = {}
         try:
-            if not db.is_vector_ready():
+            if not vector_store.is_vector_ready():
                 raise HTTPException(
                     status_code=503,
-                    detail="Vector extension is unavailable. Use a pgvector-enabled Postgres image.",
+                    detail="Vector search backend is unavailable. Check vector backend configuration.",
+                )
+            if (
+                hasattr(vector_store, "supports_writes")
+                and not vector_store.supports_writes()
+            ):
+                backend_name = str(getattr(vector_store, "backend_name", "vector"))
+                raise HTTPException(
+                    status_code=501,
+                    detail=(
+                        f"Vector backend '{backend_name}' is configured in search-only mode. "
+                        "Indexing endpoints are disabled."
+                    ),
                 )
             if not embedders:
                 raise HTTPException(status_code=503, detail="No retrieval models configured")
-            rows = db.list_captures_missing_any_embeddings(
+            rows = vector_store.list_captures_missing_any_embeddings(
                 [
                     (embedder.model_name, embedder.model_version)
                     for embedder in embedders
@@ -450,7 +471,7 @@ def create_retrieval_router(
                             raise RuntimeError(
                                 f"batch embedding size mismatch for {embedder.model_id} expected={len(valid_batch)} got={len(vectors)}"
                             )
-                        upserted = db.upsert_capture_embeddings_batch(
+                        upserted = vector_store.upsert_capture_embeddings_batch(
                             [
                                 (capture_id, vector)
                                 for (capture_id, _), vector in zip(valid_batch, vectors)
@@ -477,7 +498,7 @@ def create_retrieval_router(
                         try:
                             for embedder in embedders:
                                 vector = embedder.encode_image_bytes(img)
-                                db.upsert_capture_embedding(
+                                vector_store.upsert_capture_embedding(
                                     capture_id,
                                     embedder.model_name,
                                     embedder.model_version,
@@ -495,13 +516,13 @@ def create_retrieval_router(
                             failed.append(
                                 {"capture_id": capture_id, "error": str(single_exc)}
                             )
-            stats = db.get_capture_embedding_stats(
+            stats = vector_store.get_capture_embedding_stats(
                 embedders[0].model_name,
                 embedders[0].model_version,
                 embedding_base=embedding_base,
             )
             stats["models"] = [
-                db.get_capture_embedding_stats(
+                vector_store.get_capture_embedding_stats(
                     embedder.model_name,
                     embedder.model_version,
                     embedding_base=embedding_base,
