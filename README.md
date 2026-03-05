@@ -1,6 +1,6 @@
 # Open Geospy
 
-Open Geospy is an open-source street-view collection + image search stack. Inspired by geospy.ai
+Open Geo Spy is an open-source street-view collection + image search stack. Inspired by geospy.ai
 
 Current public dataset release is San Francisco-focused and includes multi-million capture embeddings for search.
 
