@@ -17,15 +17,41 @@ pip install -r requirements.txt
 playwright install chromium
 ```
 
-### 2) Start Postgres
+### 2) Start Postgres (metadata store)
 
 ```bash
 docker compose up -d postgres
 ```
 
-### 3) Load the pre-indexed DB snapshot (recommended)
+### 3) Load LanceDB snapshot (recommended)
 
-`data-snapshot-v1` is uploaded as multipart assets plus a `.parts.txt` manifest.
+Preferred path: restore `.lancedb` directly from the LanceDB release (`data-snapshot-v1-lancedb`).
+
+Find the latest LanceDB manifest:
+
+```bash
+gh release view data-snapshot-v1-lancedb --repo theRealestAEP/open-geospy --json assets --jq '.assets[].name' | grep '\.parts\.txt$'
+```
+
+Restore the current published snapshot (example manifest from latest upload):
+
+```bash
+BASE_URL="https://github.com/theRealestAEP/open-geospy/releases/download/data-snapshot-v1-lancedb"
+MANIFEST="geospy_lancedb_snapshot_20260304_205728.tar.gz.parts.txt"
+curl -L --fail -o /tmp/lance.parts.txt "${BASE_URL}/${MANIFEST}"
+rm -f /tmp/geospy_lancedb_snapshot.tar.gz
+while IFS= read -r part; do
+  [[ -z "$part" ]] && continue
+  curl -L --fail -o "/tmp/${part}" "${BASE_URL}/${part}"
+  cat "/tmp/${part}" >> /tmp/geospy_lancedb_snapshot.tar.gz
+  rm -f "/tmp/${part}"
+done < /tmp/lance.parts.txt
+tar -xzf /tmp/geospy_lancedb_snapshot.tar.gz
+```
+
+If you do not have a LanceDB snapshot yet, fallback path:
+
+1) Restore pgvector snapshot into Postgres:
 
 ```bash
 ./scripts/install_from_pgvector_snapshot.sh \
@@ -33,15 +59,31 @@ docker compose up -d postgres
   --parts-manifest-url https://github.com/theRealestAEP/open-geospy/releases/download/data-snapshot-v1/<snapshot-file>.parts.txt
 ```
 
-Find the exact manifest name:
+2) Sync pgvector embeddings into local LanceDB:
 
 ```bash
-gh release view data-snapshot-v1 --repo theRealestAEP/open-geospy --json assets --jq '.assets[].name' | grep '\.parts\.txt$'
+python scripts/sync_pgvector_to_lancedb.py \
+  --lance-uri .lancedb \
+  --table capture_embeddings \
+  --mode overwrite \
+  --create-index
 ```
 
-### 4) Run backend
+3) Optional cleanup: remove pgvector rows after sync (keeps metadata tables only):
 
 ```bash
+docker exec -i geospy-postgres psql -U geospy -d geospy -v ON_ERROR_STOP=1 <<'SQL'
+TRUNCATE TABLE capture_embeddings;
+VACUUM (ANALYZE) capture_embeddings;
+SQL
+```
+
+### 4) Run backend with LanceDB vector search
+
+```bash
+export GEOSPY_VECTOR_BACKEND=lancedb
+export GEOSPY_LANCEDB_URI=.lancedb
+export GEOSPY_LANCEDB_TABLE=capture_embeddings
 python -m backend.app.main
 ```
 
@@ -57,39 +99,23 @@ npm run dev
 
 Frontend: `http://127.0.0.1:5173`
 
-## Optional: Run Retrieval on Local LanceDB
+## LanceDB Notes
 
-This keeps Postgres for operational metadata (`panoramas`, `captures`, scan state) and
-uses LanceDB for vector search.
-
-1) Sync vectors from pgvector into a local Lance table:
-
-```bash
-python scripts/sync_pgvector_to_lancedb.py \
-  --lance-uri .lancedb \
-  --table capture_embeddings \
-  --mode overwrite \
-  --create-index
-```
-
-2) Switch backend to LanceDB:
-
-```bash
-export GEOSPY_VECTOR_BACKEND=lancedb
-export GEOSPY_LANCEDB_URI=.lancedb
-export GEOSPY_LANCEDB_TABLE=capture_embeddings
-python -m backend.app.main
-```
-
-Publish local LanceDB snapshot to a GitHub release:
-
-```bash
-./scripts/export_lancedb_snapshot.sh --release-tag data-snapshot-v1-lancedb
-```
+This setup keeps Postgres for operational metadata (`panoramas`, `captures`, scan state)
+and uses LanceDB for retrieval.
 
 Notes:
 - Lance mode is currently search-only for embeddings (`/api/retrieval/index-missing` disabled).
 - Switch back at any time with `GEOSPY_VECTOR_BACKEND=postgres`.
+
+## Alternative: pgvector-Only Retrieval
+
+If you want to run retrieval directly from pgvector without LanceDB:
+
+```bash
+export GEOSPY_VECTOR_BACKEND=postgres
+python -m backend.app.main
+```
 
 ## Search Flow
 
@@ -121,15 +147,9 @@ Not included in snapshot SQL:
 
 - local image files under `./captures`
 
-## Snapshot Commands
+## Snapshot Restore Commands
 
-Create and upload a snapshot release asset:
-
-```bash
-./scripts/export_pgvector_snapshot.sh --release-tag data-snapshot-v1
-```
-
-Restore from a single-file snapshot URL:
+Restore from a single-file pgvector snapshot URL:
 
 ```bash
 ./scripts/install_from_pgvector_snapshot.sh \
