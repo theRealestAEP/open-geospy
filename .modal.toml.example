@@ -1,0 +1,12 @@
+[therealestaep]
+token_id = "ak-REPLACE_ME"
+token_secret = "as-REPLACE_ME"
+environment = "google-map-walkers"
+
+# Usage:
+# 1. Copy this file to `.modal.toml`
+# 2. Fill in the token values for the Modal workspace/profile you want GeoSpy to use
+# 3. Set `MODAL_PROFILE=therealestaep` in `.env`
+#
+# GeoSpy will automatically use `.modal.toml` by setting `MODAL_CONFIG_PATH`
+# at startup when the file exists in the project root.

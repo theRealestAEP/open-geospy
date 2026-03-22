@@ -12,6 +12,14 @@ from collections import deque
 from contextlib import contextmanager
 from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
+try:
+    from env_bootstrap import load_project_env
+except ModuleNotFoundError:
+    load_project_env = None
+
+if load_project_env is not None:
+    load_project_env()
+
 import modal
 
 LOG_LEVEL = os.getenv("GEOSPY_MODAL_LOG_LEVEL", "INFO").upper()
@@ -434,4 +442,3 @@ def dispatch_embedding_jobs(
     }
     emit({"event": "all_done", **result})
     return result
-

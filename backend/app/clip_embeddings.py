@@ -10,21 +10,34 @@ from PIL import Image
 log = logging.getLogger(__name__)
 
 EMBEDDING_BASE_CLIP = "clip"
-EMBEDDING_BASE_PIGEON = "pigeon"
+EMBEDDING_BASE_PLACE = "place"
 
 DEFAULT_CLIP_MODEL = os.getenv("GEOSPY_CLIP_MODEL", "ViT-B-32")
 DEFAULT_CLIP_PRETRAINED = os.getenv("GEOSPY_CLIP_PRETRAINED", "laion2b_s34b_b79k")
 DEFAULT_CLIP_VERSION = os.getenv("GEOSPY_CLIP_VERSION", "open_clip")
 
-DEFAULT_PIGEON_RUNTIME = os.getenv("GEOSPY_PIGEON_RUNTIME", "open_clip").strip().lower()
-DEFAULT_PIGEON_CLIP_MODEL = os.getenv("GEOSPY_PIGEON_CLIP_MODEL", "ViT-B-16").strip()
-DEFAULT_PIGEON_CLIP_PRETRAINED = os.getenv(
-    "GEOSPY_PIGEON_CLIP_PRETRAINED", "laion2b_s34b_b88k"
+DEFAULT_PLACE_RUNTIME = os.getenv(
+    "GEOSPY_PLACE_RUNTIME",
+    "open_clip",
+).strip().lower()
+DEFAULT_PLACE_CLIP_MODEL = os.getenv(
+    "GEOSPY_PLACE_CLIP_MODEL",
+    "ViT-B-16",
 ).strip()
-DEFAULT_PIGEON_MODEL = os.getenv("GEOSPY_PIGEON_MODEL_NAME", "").strip()
-DEFAULT_PIGEON_VERSION = os.getenv("GEOSPY_PIGEON_MODEL_VERSION", "open_clip_place")
-DEFAULT_PIGEON_TRUST_REMOTE_CODE = (
-    os.getenv("GEOSPY_PIGEON_TRUST_REMOTE_CODE", "0").strip().lower()
+DEFAULT_PLACE_CLIP_PRETRAINED = os.getenv(
+    "GEOSPY_PLACE_CLIP_PRETRAINED",
+    "laion2b_s34b_b88k",
+).strip()
+DEFAULT_PLACE_MODEL = os.getenv(
+    "GEOSPY_PLACE_MODEL_NAME",
+    "",
+).strip()
+DEFAULT_PLACE_VERSION = os.getenv(
+    "GEOSPY_PLACE_MODEL_VERSION",
+    "open_clip_place",
+)
+DEFAULT_PLACE_TRUST_REMOTE_CODE = (
+    os.getenv("GEOSPY_PLACE_TRUST_REMOTE_CODE", "0").strip().lower()
     in {"1", "true", "yes", "on"}
 )
 DEFAULT_HF_TOKEN = os.getenv("HF_TOKEN") or os.getenv("HUGGING_FACE_HUB_TOKEN")
@@ -65,49 +78,64 @@ def _build_retrieval_model_configs() -> List[RetrievalModelConfig]:
             )
         )
 
-    pigeon_enabled = _is_enabled(os.getenv("GEOSPY_PIGEON_MODEL_ENABLED", "1"), default=True)
-    if pigeon_enabled:
-        pigeon_runtime = DEFAULT_PIGEON_RUNTIME or "open_clip"
-        if pigeon_runtime not in {"open_clip", "hf_transformers"}:
+    place_enabled = _is_enabled(
+        os.getenv("GEOSPY_PLACE_MODEL_ENABLED", "1"),
+        default=True,
+    )
+    if place_enabled:
+        place_runtime = DEFAULT_PLACE_RUNTIME or "open_clip"
+        if place_runtime not in {"open_clip", "hf_transformers"}:
             raise RuntimeError(
-                "GEOSPY_PIGEON_RUNTIME must be one of: open_clip, hf_transformers."
+                "GEOSPY_PLACE_RUNTIME must be one of: open_clip, hf_transformers."
             )
-        if pigeon_runtime == "open_clip":
-            if not DEFAULT_PIGEON_CLIP_MODEL or not DEFAULT_PIGEON_CLIP_PRETRAINED:
+        if place_runtime == "open_clip":
+            if not DEFAULT_PLACE_CLIP_MODEL or not DEFAULT_PLACE_CLIP_PRETRAINED:
                 raise RuntimeError(
-                    "GEOSPY_PIGEON_RUNTIME=open_clip requires "
-                    "GEOSPY_PIGEON_CLIP_MODEL and GEOSPY_PIGEON_CLIP_PRETRAINED."
+                    "GEOSPY_PLACE_RUNTIME=open_clip requires "
+                    "GEOSPY_PLACE_CLIP_MODEL and GEOSPY_PLACE_CLIP_PRETRAINED."
                 )
             configs.append(
                 RetrievalModelConfig(
-                    model_id="pigeon",
-                    model_name=DEFAULT_PIGEON_CLIP_MODEL,
-                    pretrained=DEFAULT_PIGEON_CLIP_PRETRAINED,
-                    model_version=DEFAULT_PIGEON_VERSION,
+                    model_id="place",
+                    model_name=DEFAULT_PLACE_CLIP_MODEL,
+                    pretrained=DEFAULT_PLACE_CLIP_PRETRAINED,
+                    model_version=DEFAULT_PLACE_VERSION,
                     weight=max(
-                        0.0, float(os.getenv("GEOSPY_RETRIEVAL_PIGEON_WEIGHT", "1.0"))
+                        0.0,
+                        float(
+                            os.getenv(
+                                "GEOSPY_RETRIEVAL_PLACE_WEIGHT",
+                                "1.0",
+                            )
+                        ),
                     ),
-                    embedding_base=EMBEDDING_BASE_PIGEON,
+                    embedding_base=EMBEDDING_BASE_PLACE,
                     runtime="open_clip",
                 )
             )
         else:
-            if not DEFAULT_PIGEON_MODEL:
+            if not DEFAULT_PLACE_MODEL:
                 raise RuntimeError(
-                    "GEOSPY_PIGEON_RUNTIME=hf_transformers requires GEOSPY_PIGEON_MODEL_NAME."
+                    "GEOSPY_PLACE_RUNTIME=hf_transformers requires GEOSPY_PLACE_MODEL_NAME."
                 )
             configs.append(
                 RetrievalModelConfig(
-                    model_id="pigeon",
-                    model_name=DEFAULT_PIGEON_MODEL,
+                    model_id="place",
+                    model_name=DEFAULT_PLACE_MODEL,
                     pretrained="",
-                    model_version=DEFAULT_PIGEON_VERSION,
+                    model_version=DEFAULT_PLACE_VERSION,
                     weight=max(
-                        0.0, float(os.getenv("GEOSPY_RETRIEVAL_PIGEON_WEIGHT", "1.0"))
+                        0.0,
+                        float(
+                            os.getenv(
+                                "GEOSPY_RETRIEVAL_PLACE_WEIGHT",
+                                "1.0",
+                            )
+                        ),
                     ),
-                    embedding_base=EMBEDDING_BASE_PIGEON,
+                    embedding_base=EMBEDDING_BASE_PLACE,
                     runtime="hf_transformers",
-                    trust_remote_code=DEFAULT_PIGEON_TRUST_REMOTE_CODE,
+                    trust_remote_code=DEFAULT_PLACE_TRUST_REMOTE_CODE,
                 )
             )
 
@@ -146,7 +174,7 @@ def _import_hf_runtime():
         from transformers import AutoImageProcessor, AutoModel
     except ImportError as exc:
         raise RuntimeError(
-            "PIGEON dependencies are missing. Install transformers and torch."
+            "Place-model dependencies are missing. Install transformers and torch."
         ) from exc
     return torch, AutoImageProcessor, AutoModel
 
@@ -282,15 +310,15 @@ class ClipEmbedder:
         return features.detach().cpu().float().tolist()
 
 
-class PigeonEmbedder:
+class PlaceEmbedder:
     def __init__(
         self,
-        model_id: str = "pigeon",
-        model_name: str = DEFAULT_PIGEON_MODEL,
+        model_id: str = "place",
+        model_name: str = DEFAULT_PLACE_MODEL,
         pretrained: str = "",
-        model_version: str = DEFAULT_PIGEON_VERSION,
+        model_version: str = DEFAULT_PLACE_VERSION,
         weight: float = 1.0,
-        trust_remote_code: bool = DEFAULT_PIGEON_TRUST_REMOTE_CODE,
+        trust_remote_code: bool = DEFAULT_PLACE_TRUST_REMOTE_CODE,
         runtime: str = "hf_transformers",
     ):
         self.model_id = model_id
@@ -298,7 +326,7 @@ class PigeonEmbedder:
         self.pretrained = str(pretrained or "")
         self.model_version = model_version
         self.weight = float(weight)
-        self.embedding_base = EMBEDDING_BASE_PIGEON
+        self.embedding_base = EMBEDDING_BASE_PLACE
         self.runtime = str(runtime or "hf_transformers")
         self.trust_remote_code = bool(trust_remote_code)
         self._torch = None
@@ -322,7 +350,7 @@ class PigeonEmbedder:
                 self._device = "cpu"
             if not self.pretrained:
                 raise RuntimeError(
-                    "Pigeon runtime=open_clip requires pretrained checkpoint name."
+                    "Place runtime=open_clip requires pretrained checkpoint name."
                 )
             model, _, preprocess = open_clip.create_model_and_transforms(
                 self.model_name, pretrained=self.pretrained
@@ -366,7 +394,7 @@ class PigeonEmbedder:
             if getattr(feats, "dim", lambda: 0)() == 3:
                 feats = feats.mean(dim=1)
         else:
-            raise RuntimeError("Unable to extract embeddings from PIGEON model output")
+            raise RuntimeError("Unable to extract embeddings from place model output")
         if feats.dim() == 1:
             feats = feats.unsqueeze(0)
         return feats
@@ -382,7 +410,7 @@ class PigeonEmbedder:
         image.save(out, format="JPEG", quality=90)
         probe = self.encode_image_bytes_batch([out.getvalue()])
         if not probe or not probe[0]:
-            raise RuntimeError("Unable to infer PIGEON embedding dimension")
+            raise RuntimeError("Unable to infer place embedding dimension")
         return len(probe[0])
 
     def encode_image_bytes_batch(self, image_bytes_batch: List[bytes]) -> List[List[float]]:
@@ -420,7 +448,7 @@ class PigeonEmbedder:
 
 def _build_embedder(cfg: RetrievalModelConfig):
     if cfg.runtime == "hf_transformers":
-        return PigeonEmbedder(
+        return PlaceEmbedder(
             model_id=cfg.model_id,
             model_name=cfg.model_name,
             pretrained=cfg.pretrained,
@@ -429,8 +457,8 @@ def _build_embedder(cfg: RetrievalModelConfig):
             trust_remote_code=cfg.trust_remote_code,
             runtime=cfg.runtime,
         )
-    if cfg.model_id == "pigeon":
-        return PigeonEmbedder(
+    if cfg.model_id == "place":
+        return PlaceEmbedder(
             model_id=cfg.model_id,
             model_name=cfg.model_name,
             pretrained=cfg.pretrained,

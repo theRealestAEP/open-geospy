@@ -28,6 +28,10 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
+from env_bootstrap import load_project_env
+
+load_project_env()
+
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
@@ -197,7 +201,7 @@ async def _startup_auto_index():
     global auto_index_task, auto_index_stop_event
     if VECTOR_BACKEND != "postgres":
         log.info(
-            "Auto-indexer disabled for vector backend=%s (search-only mode)",
+            "Auto-indexer disabled for vector backend=%s (backfill currently postgres-only)",
             VECTOR_BACKEND,
         )
         return
@@ -321,7 +325,7 @@ async def _index_missing_embeddings_once(limit: int) -> dict:
             "attempted": 0,
             "indexed": 0,
             "skipped": 0,
-            "error": f"vector-backend-{VECTOR_BACKEND}-search-only",
+            "error": f"vector-backend-{VECTOR_BACKEND}-missing-backfill-unsupported",
         }
     limit = max(1, int(limit))
     try:
@@ -502,6 +506,196 @@ def _haversine_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
         + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2.0) ** 2
     )
     return radius_m * 2.0 * math.atan2(math.sqrt(a), math.sqrt(1.0 - a))
+
+
+def _filter_fill_candidates(
+    candidate_points: List[Tuple[float, float]],
+    existing_points: List[Tuple[float, float]],
+    fill_gap_meters: float,
+) -> List[Tuple[float, float]]:
+    """
+    Keep only candidates that are farther than `fill_gap_meters` from any
+    existing panorama. Uses a simple spatial bucket to avoid O(n*m) scans.
+    """
+    import math
+
+    if not candidate_points or not existing_points:
+        return candidate_points
+
+    gap_m = max(0.0, float(fill_gap_meters))
+    if gap_m <= 0.0:
+        return candidate_points
+
+    ref_lat = sum(lat for lat, _ in candidate_points) / float(len(candidate_points))
+    meters_per_degree_lat = 111320.0
+    meters_per_degree_lon = max(
+        1.0, 111320.0 * math.cos(math.radians(ref_lat))
+    )
+
+    def _to_xy(point: Tuple[float, float]) -> Tuple[float, float]:
+        lat, lon = point
+        return lon * meters_per_degree_lon, lat * meters_per_degree_lat
+
+    def _bucket_key(x_m: float, y_m: float) -> Tuple[int, int]:
+        return (
+            int(math.floor(x_m / gap_m)),
+            int(math.floor(y_m / gap_m)),
+        )
+
+    bucketed_existing: Dict[Tuple[int, int], List[Tuple[float, float, float, float]]] = {}
+    for existing_point in existing_points:
+        x_m, y_m = _to_xy(existing_point)
+        bucketed_existing.setdefault(_bucket_key(x_m, y_m), []).append(
+            (x_m, y_m, existing_point[0], existing_point[1])
+        )
+
+    gap_sq = gap_m * gap_m
+    kept: List[Tuple[float, float]] = []
+    for lat, lon in candidate_points:
+        x_m, y_m = _to_xy((lat, lon))
+        bx, by = _bucket_key(x_m, y_m)
+        is_far_enough = True
+        for dx in (-1, 0, 1):
+            if not is_far_enough:
+                break
+            for dy in (-1, 0, 1):
+                for ex_m, ey_m, ex_lat, ex_lon in bucketed_existing.get((bx + dx, by + dy), []):
+                    approx_sq = (x_m - ex_m) ** 2 + (y_m - ey_m) ** 2
+                    if approx_sq > gap_sq:
+                        continue
+                    if _haversine_m(lat, lon, ex_lat, ex_lon) <= gap_m:
+                        is_far_enough = False
+                        break
+                if not is_far_enough:
+                    break
+        if is_far_enough:
+            kept.append((lat, lon))
+    return kept
+
+
+def _prepare_scan_targets(
+    req_data: dict,
+    job_type: str,
+    effective_capture_profile: str,
+    profile_views: List[Tuple[float, float]],
+) -> dict:
+    """
+    Build the seed/target set for scan, fill, or enrich without blocking the
+    main asyncio loop. This runs in a worker thread.
+    """
+    polygon_coords = req_data.get("polygon_coords") or []
+    polygon_points: List[Tuple[float, float]] = []
+    if polygon_coords:
+        try:
+            polygon_points = [(float(p[0]), float(p[1])) for p in polygon_coords]
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail="Invalid polygon_coords format") from exc
+        if len(polygon_points) < 3:
+            raise HTTPException(status_code=400, detail="polygon_coords requires at least 3 points")
+
+    raw_points: List[Tuple[float, float]] = []
+    polygon_filtered_points: List[Tuple[float, float]] = []
+    land_points: List[Tuple[float, float]] = []
+    missing_panoramas = 0
+    missing_views_total = 0
+    water_removed = 0
+    polygon_removed = 0
+    gap_removed = 0
+
+    db = get_db()
+    try:
+        if job_type in {"scan", "fill"}:
+            raw_points = generate_grid(
+                float(req_data["min_lat"]),
+                float(req_data["min_lon"]),
+                float(req_data["max_lat"]),
+                float(req_data["max_lon"]),
+                float(req_data["step_meters"]),
+            )
+            if not raw_points:
+                raise HTTPException(status_code=400, detail="Bounding box produced zero seeds")
+
+            if polygon_points:
+                polygon_filtered_points = [
+                    (lat, lon)
+                    for lat, lon in raw_points
+                    if _point_in_polygon(lat, lon, polygon_points)
+                ]
+            else:
+                polygon_filtered_points = raw_points
+            polygon_removed = len(raw_points) - len(polygon_filtered_points)
+
+            land_points = filter_water_points(polygon_filtered_points)
+            water_removed = len(polygon_filtered_points) - len(land_points)
+
+            if job_type == "fill":
+                existing_rows = db.get_panoramas_in_bbox(
+                    float(req_data["min_lat"]),
+                    float(req_data["min_lon"]),
+                    float(req_data["max_lat"]),
+                    float(req_data["max_lon"]),
+                )
+                existing_points = [
+                    (float(row["lat"]), float(row["lon"])) for row in existing_rows
+                ]
+                gap_kept = _filter_fill_candidates(
+                    land_points,
+                    existing_points,
+                    float(req_data["fill_gap_meters"]),
+                )
+                gap_removed = len(land_points) - len(gap_kept)
+                land_points = gap_kept
+        else:
+            panorama_rows = db.get_panoramas_in_bbox(
+                float(req_data["min_lat"]),
+                float(req_data["min_lon"]),
+                float(req_data["max_lat"]),
+                float(req_data["max_lon"]),
+            )
+            if polygon_points:
+                panorama_rows = [
+                    row
+                    for row in panorama_rows
+                    if _point_in_polygon(float(row["lat"]), float(row["lon"]), polygon_points)
+                ]
+            if not panorama_rows:
+                raise HTTPException(
+                    status_code=400,
+                    detail="No existing panoramas found in selected area to enrich",
+                )
+            panorama_ids = [int(row["id"]) for row in panorama_rows]
+            missing_by_panorama = db.get_missing_views_for_panoramas(
+                panorama_ids,
+                required_views=profile_views,
+                capture_profile=effective_capture_profile,
+            )
+            selected_rows = []
+            for row in panorama_rows:
+                missing = missing_by_panorama.get(int(row["id"]), [])
+                if req_data.get("enrich_missing_only") and not missing:
+                    continue
+                selected_rows.append(row)
+                missing_panoramas += 1 if missing else 0
+                missing_views_total += len(missing)
+            land_points = [
+                (float(row["lat"]), float(row["lon"]))
+                for row in selected_rows
+            ]
+            raw_points = land_points
+            polygon_filtered_points = land_points
+    finally:
+        db.close()
+
+    return {
+        "raw_points": raw_points,
+        "polygon_filtered_points": polygon_filtered_points,
+        "land_points": land_points,
+        "missing_panoramas": missing_panoramas,
+        "missing_views_total": missing_views_total,
+        "water_removed": water_removed,
+        "polygon_removed": polygon_removed,
+        "gap_removed": gap_removed,
+    }
 
 
 def _capture_profile_settings(profile_name: str) -> dict:
@@ -739,8 +933,12 @@ async def scan_area(req: ScanAreaRequest):
     """Dispatch a scan/enrich/fill job for a selected area."""
     if req.min_lat >= req.max_lat or req.min_lon >= req.max_lon:
         raise HTTPException(status_code=400, detail="Invalid bounding box")
-    if not (1 <= req.num_workers <= 32):
-        raise HTTPException(status_code=400, detail="num_workers must be 1-32")
+    max_workers = 100 if str(req.mode or "local").strip().lower() == "modal" else 32
+    if not (1 <= req.num_workers <= max_workers):
+        raise HTTPException(
+            status_code=400,
+            detail=f"num_workers must be 1-{max_workers} for mode={str(req.mode or 'local').strip().lower()}",
+        )
     if req.step_meters < 5:
         raise HTTPException(status_code=400, detail="step_meters must be >= 5")
     job_type = str(req.job_type or "scan").strip().lower()
@@ -761,104 +959,21 @@ async def scan_area(req: ScanAreaRequest):
         for heading in profile_cfg["headings"]
     ]
 
-    polygon_coords = req.polygon_coords or []
-    polygon_points: List[Tuple[float, float]] = []
-    if polygon_coords:
-        try:
-            polygon_points = [(float(p[0]), float(p[1])) for p in polygon_coords]
-        except Exception:
-            raise HTTPException(status_code=400, detail="Invalid polygon_coords format")
-        if len(polygon_points) < 3:
-            raise HTTPException(status_code=400, detail="polygon_coords requires at least 3 points")
-
-    db = get_db()
-    raw_points: List[Tuple[float, float]] = []
-    polygon_filtered_points: List[Tuple[float, float]] = []
-    land_points: List[Tuple[float, float]] = []
-    missing_panoramas = 0
-    missing_views_total = 0
-    water_removed = 0
-    polygon_removed = 0
-    gap_removed = 0
-    try:
-        if job_type in {"scan", "fill"}:
-            raw_points = generate_grid(
-                req.min_lat, req.min_lon, req.max_lat, req.max_lon, req.step_meters
-            )
-            if not raw_points:
-                raise HTTPException(status_code=400, detail="Bounding box produced zero seeds")
-
-            if polygon_points:
-                polygon_filtered_points = [
-                    (lat, lon)
-                    for lat, lon in raw_points
-                    if _point_in_polygon(lat, lon, polygon_points)
-                ]
-            else:
-                polygon_filtered_points = raw_points
-            polygon_removed = len(raw_points) - len(polygon_filtered_points)
-
-            land_points = filter_water_points(polygon_filtered_points)
-            water_removed = len(polygon_filtered_points) - len(land_points)
-
-            if job_type == "fill":
-                existing_rows = db.get_panoramas_in_bbox(
-                    req.min_lat, req.min_lon, req.max_lat, req.max_lon
-                )
-                existing_points = [
-                    (float(row["lat"]), float(row["lon"])) for row in existing_rows
-                ]
-                gap_kept: List[Tuple[float, float]] = []
-                for lat, lon in land_points:
-                    is_far_enough = True
-                    for existing_lat, existing_lon in existing_points:
-                        if (
-                            _haversine_m(lat, lon, existing_lat, existing_lon)
-                            <= float(req.fill_gap_meters)
-                        ):
-                            is_far_enough = False
-                            break
-                    if is_far_enough:
-                        gap_kept.append((lat, lon))
-                gap_removed = len(land_points) - len(gap_kept)
-                land_points = gap_kept
-        else:
-            panorama_rows = db.get_panoramas_in_bbox(
-                req.min_lat, req.min_lon, req.max_lat, req.max_lon
-            )
-            if polygon_points:
-                panorama_rows = [
-                    row
-                    for row in panorama_rows
-                    if _point_in_polygon(float(row["lat"]), float(row["lon"]), polygon_points)
-                ]
-            if not panorama_rows:
-                raise HTTPException(
-                    status_code=400,
-                    detail="No existing panoramas found in selected area to enrich",
-                )
-            panorama_ids = [int(row["id"]) for row in panorama_rows]
-            missing_by_panorama = db.get_missing_views_for_panoramas(
-                panorama_ids,
-                required_views=profile_views,
-                capture_profile=effective_capture_profile,
-            )
-            selected_rows = []
-            for row in panorama_rows:
-                missing = missing_by_panorama.get(int(row["id"]), [])
-                if req.enrich_missing_only and not missing:
-                    continue
-                selected_rows.append(row)
-                missing_panoramas += 1 if missing else 0
-                missing_views_total += len(missing)
-            land_points = [
-                (float(row["lat"]), float(row["lon"]))
-                for row in selected_rows
-            ]
-            raw_points = land_points
-            polygon_filtered_points = land_points
-    finally:
-        db.close()
+    prep = await asyncio.to_thread(
+        _prepare_scan_targets,
+        req.dict(),
+        job_type,
+        effective_capture_profile,
+        profile_views,
+    )
+    raw_points: List[Tuple[float, float]] = prep["raw_points"]
+    polygon_filtered_points: List[Tuple[float, float]] = prep["polygon_filtered_points"]
+    land_points: List[Tuple[float, float]] = prep["land_points"]
+    missing_panoramas = int(prep["missing_panoramas"])
+    missing_views_total = int(prep["missing_views_total"])
+    water_removed = int(prep["water_removed"])
+    polygon_removed = int(prep["polygon_removed"])
+    gap_removed = int(prep["gap_removed"])
 
     if not land_points:
         if job_type == "fill":

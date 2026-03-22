@@ -62,6 +62,12 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Optional max rows to copy (0 = all rows)",
     )
     parser.add_argument(
+        "--after-capture-id",
+        type=int,
+        default=0,
+        help="Only copy rows with capture_id greater than this value",
+    )
+    parser.add_argument(
         "--mode",
         choices=["overwrite", "append"],
         default="overwrite",
@@ -180,24 +186,34 @@ def main() -> int:
     lance_conn = _connect_lance(args.lance_uri)
 
     log.info(
-        "Starting copy postgres->lance db_url=%s lance_uri=%s table=%s mode=%s batch_size=%s",
+        (
+            "Starting copy postgres->lance db_url=%s lance_uri=%s table=%s "
+            "mode=%s batch_size=%s after_capture_id=%s"
+        ),
         args.db_url,
         args.lance_uri,
         args.table,
         args.mode,
         args.batch_size,
+        args.after_capture_id,
     )
 
     query = """
         SELECT capture_id, model_name, model_version, embedding::text AS embedding_text
         FROM capture_embeddings
-        ORDER BY capture_id ASC, model_name ASC, model_version ASC
     """
+    query_clauses = []
+    query_params = []
+    if int(args.after_capture_id) > 0:
+        query_clauses.append("capture_id > %s")
+        query_params.append(int(args.after_capture_id))
+    if query_clauses:
+        query += " WHERE " + " AND ".join(query_clauses)
+    query += " ORDER BY capture_id ASC, model_name ASC, model_version ASC"
     if int(args.limit) > 0:
         query += " LIMIT %s"
-        query_params = (int(args.limit),)
-    else:
-        query_params = ()
+        query_params.append(int(args.limit))
+    query_params = tuple(query_params)
 
     with psycopg.connect(args.db_url, row_factory=dict_row) as pg_conn:
         with pg_conn.cursor(name="pg_to_lance_embeddings") as cursor:

@@ -24,6 +24,7 @@ from urllib.request import Request, urlopen
 
 from playwright.async_api import async_playwright, Page
 
+from backend.app.embedding_ingest import CaptureEmbeddingIngestor
 from config import CrawlerConfig
 from db.postgres_database import Capture, Database, Panorama
 from worker.water_filter import is_water
@@ -55,6 +56,7 @@ class BatchCrawler:
     ):
         self.config = config
         self.db = Database(config.DATABASE_URL)
+        self.embedding_ingestor = CaptureEmbeddingIngestor(self.db, logger=log)
         self.seeds = self._load_seeds(seeds_file)
         self.worker_id = worker_id
         self.lease_seconds = lease_seconds
@@ -258,12 +260,15 @@ class BatchCrawler:
 
             await browser.close()
 
+        self.embedding_ingestor.close()
         self.db.close()
         log.info(
-            "Done. captured=%s skipped=%s failed=%s",
+            "Done. captured=%s skipped=%s failed=%s embeddings_saved=%s embedding_errors=%s",
             self.captured,
             self.skipped,
             self.failed,
+            self.embedding_ingestor.saved_embeddings,
+            self.embedding_ingestor.embed_errors,
         )
 
     async def _capture_views(
@@ -345,12 +350,15 @@ class BatchCrawler:
                     capture_kind=self.job_kind,
                 )
                 if self.missing_only:
-                    _, created = self.db.add_capture_if_missing(capture)
+                    capture_id, created = self.db.add_capture_if_missing(capture)
                     if created:
                         success_count += 1
                 else:
-                    self.db.add_capture(capture)
+                    capture_id = self.db.add_capture(capture)
+                    created = True
                     success_count += 1
+                if created:
+                    self.embedding_ingestor.add_capture(int(capture_id), image_bytes)
             except Exception as e:
                 log.debug(
                     "Capture failed heading=%s pitch=%s profile=%s error=%s",
@@ -359,6 +367,7 @@ class BatchCrawler:
                     self.capture_profile,
                     e,
                 )
+        self.embedding_ingestor.flush()
         return success_count
 
     def _thumbnail_pitch(self, map_pitch: float) -> float:

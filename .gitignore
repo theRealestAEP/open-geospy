@@ -20,6 +20,7 @@ env/
 .env
 .env.*
 !.env.example
+.modal.toml
 
 # Frontend build artifacts
 frontend/node_modules/

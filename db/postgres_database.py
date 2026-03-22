@@ -22,7 +22,7 @@ DEFAULT_RETRIEVAL_IVFFLAT_PROBES = max(
     1, int(os.getenv("GEOSPY_RETRIEVAL_IVFFLAT_PROBES", "120"))
 )
 EMBEDDING_BASE_CLIP = "clip"
-EMBEDDING_BASE_PIGEON = "pigeon"
+EMBEDDING_BASE_PLACE = "place"
 CAPTURE_EMBEDDINGS_TABLE = "capture_embeddings"
 
 
@@ -185,7 +185,7 @@ class Database:
 
     def _normalize_embedding_base(self, embedding_base: Optional[str]) -> str:
         raw = str(embedding_base or EMBEDDING_BASE_CLIP).strip().lower()
-        if raw in {EMBEDDING_BASE_CLIP, EMBEDDING_BASE_PIGEON}:
+        if raw in {EMBEDDING_BASE_CLIP, EMBEDDING_BASE_PLACE}:
             return raw
         return EMBEDDING_BASE_CLIP
 
@@ -283,29 +283,28 @@ class Database:
             )
         ]
 
-        configured_pigeon_models = []
-        pigeon_enabled = (
-            os.getenv("GEOSPY_PIGEON_MODEL_ENABLED", "0").strip().lower()
+        place_enabled = (
+            os.getenv("GEOSPY_PLACE_MODEL_ENABLED", "0").strip().lower()
             in {"1", "true", "yes", "on"}
         )
-        if pigeon_enabled:
-            pigeon_runtime = (
-                os.getenv("GEOSPY_PIGEON_RUNTIME", "open_clip").strip().lower()
-            )
-            if pigeon_runtime == "open_clip":
-                pigeon_model_name = os.getenv("GEOSPY_PIGEON_CLIP_MODEL", "ViT-B-16")
-                pigeon_model_version = os.getenv(
-                    "GEOSPY_PIGEON_MODEL_VERSION", "pigeon_clip"
+        if place_enabled:
+            place_runtime = os.getenv("GEOSPY_PLACE_RUNTIME", "open_clip").strip().lower()
+            if place_runtime == "open_clip":
+                place_model_name = os.getenv("GEOSPY_PLACE_CLIP_MODEL", "ViT-B-16")
+                place_model_version = os.getenv(
+                    "GEOSPY_PLACE_MODEL_VERSION",
+                    "open_clip_place",
                 )
             else:
-                pigeon_model_name = os.getenv("GEOSPY_PIGEON_MODEL_NAME", "")
-                pigeon_model_version = os.getenv(
-                    "GEOSPY_PIGEON_MODEL_VERSION", "pigeon_hf"
+                place_model_name = os.getenv("GEOSPY_PLACE_MODEL_NAME", "")
+                place_model_version = os.getenv(
+                    "GEOSPY_PLACE_MODEL_VERSION",
+                    "place_hf",
                 )
             configured_models.append(
                 (
-                    pigeon_model_name,
-                    pigeon_model_version,
+                    place_model_name,
+                    place_model_version,
                 )
             )
 

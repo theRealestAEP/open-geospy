@@ -14,6 +14,14 @@ from collections import deque
 from contextlib import contextmanager
 from typing import Callable, Dict, List, Optional, Tuple
 
+try:
+    from env_bootstrap import load_project_env
+except ModuleNotFoundError:
+    load_project_env = None
+
+if load_project_env is not None:
+    load_project_env()
+
 import modal
 
 LOG_LEVEL = os.getenv("GEOSPY_MODAL_LOG_LEVEL", "INFO").upper()
@@ -531,93 +539,19 @@ def save_results_to_local_db(
     """Write scrape results into local DB and captures directory."""
     from datetime import datetime
 
-    from backend.app.clip_embeddings import (
-        encode_image_batch_for_all_models,
-        get_retrieval_embedders,
-    )
+    from backend.app.embedding_ingest import CaptureEmbeddingIngestor
     from db.postgres_database import Capture, Database, Panorama
 
     os.makedirs(captures_dir, exist_ok=True)
     db = Database(db_path)
     saved_panos = 0
     saved_captures = 0
-    saved_embeddings = 0
-    embed_errors = 0
-    pending_embeddings: List[Tuple[int, bytes]] = []
-    embedders: List = []
-    embed_batch_size = max(1, int(embed_batch_size))
-
-    if embed_on_ingest and db.is_vector_ready():
-        try:
-            embedders = list(get_retrieval_embedders())
-            log.info(
-                "modal ingest embedding enabled models=%s batch_size=%s",
-                [
-                    f"{embedder.model_name}:{embedder.model_version}"
-                    for embedder in embedders
-                ],
-                embed_batch_size,
-            )
-        except Exception as exc:
-            log.warning("modal ingest embedding disabled; embedder unavailable: %s", exc)
-    elif embed_on_ingest and not db.is_vector_ready():
-        log.warning("modal ingest embedding disabled; pgvector unavailable")
-
-    def _flush_pending_embeddings() -> None:
-        nonlocal saved_embeddings
-        nonlocal embed_errors
-        nonlocal pending_embeddings
-        if not pending_embeddings or not embedders:
-            return
-        try:
-            model_vectors = encode_image_batch_for_all_models(
-                [image_bytes for _, image_bytes in pending_embeddings]
-            )
-            if not model_vectors:
-                raise RuntimeError("No retrieval models encoded successfully")
-            for embedder, vectors in model_vectors:
-                if len(vectors) != len(pending_embeddings):
-                    raise RuntimeError(
-                        f"batch embedding size mismatch for {embedder.model_id} expected={len(pending_embeddings)} got={len(vectors)}"
-                    )
-                saved_embeddings += db.upsert_capture_embeddings_batch(
-                    [
-                        (capture_id, vector)
-                        for (capture_id, _), vector in zip(pending_embeddings, vectors)
-                    ],
-                    embedder.model_name,
-                    embedder.model_version,
-                    embedding_base=str(getattr(embedder, "embedding_base", "clip")),
-                )
-        except Exception as exc:
-            log.warning(
-                "modal ingest embedding batch failed size=%s error=%s; retrying singles",
-                len(pending_embeddings),
-                exc,
-            )
-            for capture_id, image_bytes in pending_embeddings:
-                try:
-                    for embedder in embedders:
-                        vector = embedder.encode_image_bytes(image_bytes)
-                        db.upsert_capture_embedding(
-                            capture_id,
-                            embedder.model_name,
-                            embedder.model_version,
-                            vector,
-                            embedding_base=str(
-                                getattr(embedder, "embedding_base", "clip")
-                            ),
-                        )
-                        saved_embeddings += 1
-                except Exception as single_exc:
-                    embed_errors += 1
-                    log.warning(
-                        "modal ingest embedding failed capture_id=%s error=%s",
-                        capture_id,
-                        single_exc,
-                    )
-        finally:
-            pending_embeddings = []
+    embedding_ingestor = CaptureEmbeddingIngestor(
+        db,
+        enabled=embed_on_ingest,
+        batch_size=embed_batch_size,
+        logger=log,
+    )
 
     for pano_data in results:
         pano_id_str = pano_data.get("pano_id") or ""
@@ -680,18 +614,16 @@ def save_results_to_local_db(
                 saved_captures += 1
                 created_capture = True
 
-            if embedders and created_capture:
-                pending_embeddings.append((int(capture_id), image_bytes))
-                if len(pending_embeddings) >= embed_batch_size:
-                    _flush_pending_embeddings()
+            if created_capture:
+                embedding_ingestor.add_capture(int(capture_id), image_bytes)
 
-    _flush_pending_embeddings()
+    embedding_ingestor.close()
     db.close()
     return {
         "panoramas_saved": saved_panos,
         "captures_saved": saved_captures,
-        "embeddings_saved": saved_embeddings,
-        "embedding_errors": embed_errors,
+        "embeddings_saved": embedding_ingestor.saved_embeddings,
+        "embedding_errors": embedding_ingestor.embed_errors,
     }
 
 
@@ -776,10 +708,55 @@ def dispatch_and_collect(
         }
     )
 
+    max_parallel_workers = max(1, int(num_workers))
+    active = deque()
+
+    def _submit_next_job() -> bool:
+        nonlocal workers_submitted
+        if stop_requested() or not pending_jobs or len(active) >= max_parallel_workers:
+            return False
+        job = pending_jobs.popleft()
+        worker_payload = {
+            "coords": [[lat, lon] for lat, lon in job["coords"]],
+            "headings": headings or HEADINGS,
+            "pitches": pitches or [PITCH],
+            "capture_profile": capture_profile,
+            "capture_kind": capture_kind,
+        }
+        handle = scrape_locations.spawn(worker_payload)
+        workers_submitted += 1
+        active.append((job, handle))
+        print(
+            f"  Submitted {job['job_id']} kind={job['kind']} "
+            f"seeds={len(job['coords'])} call_id={handle.object_id}"
+        )
+        emit(
+            {
+                "event": "worker_submitted",
+                "job_id": job["job_id"],
+                "job_kind": job["kind"],
+                "seed_count": len(job["coords"]),
+                "call_id": handle.object_id,
+                "workers_total": workers_total,
+                "workers_submitted": workers_submitted,
+                "workers_completed": workers_completed,
+                "workers_failed": workers_failed,
+                "retries_queued": retries_queued,
+                "retries_completed": retries_completed,
+                "retries_failed": retries_failed,
+            }
+        )
+        return True
+
+    def _top_up_active_jobs() -> None:
+        while _submit_next_job():
+            pass
+
     try:
         with _shared_modal_app_context(environment_name):
             print("Modal app context active. Submitting workers...")
-            while pending_jobs:
+            _top_up_active_jobs()
+            while active or pending_jobs:
                 if stop_requested():
                     emit(
                         {
@@ -791,46 +768,8 @@ def dispatch_and_collect(
                             "workers_cancelled": workers_cancelled,
                         }
                     )
-                    break
-                active = []
-                while pending_jobs and len(active) < max(1, int(num_workers)):
-                    if stop_requested():
-                        break
-                    job = pending_jobs.popleft()
-                    worker_payload = {
-                        "coords": [[lat, lon] for lat, lon in job["coords"]],
-                        "headings": headings or HEADINGS,
-                        "pitches": pitches or [PITCH],
-                        "capture_profile": capture_profile,
-                        "capture_kind": capture_kind,
-                    }
-                    handle = scrape_locations.spawn(worker_payload)
-                    workers_submitted += 1
-                    active.append((job, handle))
-                    print(
-                        f"  Submitted {job['job_id']} kind={job['kind']} "
-                        f"seeds={len(job['coords'])} call_id={handle.object_id}"
-                    )
-                    emit(
-                        {
-                            "event": "worker_submitted",
-                            "job_id": job["job_id"],
-                            "job_kind": job["kind"],
-                            "seed_count": len(job["coords"]),
-                            "call_id": handle.object_id,
-                            "workers_total": workers_total,
-                            "workers_submitted": workers_submitted,
-                            "workers_completed": workers_completed,
-                            "workers_failed": workers_failed,
-                            "retries_queued": retries_queued,
-                            "retries_completed": retries_completed,
-                            "retries_failed": retries_failed,
-                        }
-                    )
-
-                for job, handle in active:
-                    print(f"  Waiting for {job['job_id']}...")
-                    if stop_requested():
+                    while active:
+                        job, handle = active.popleft()
                         try:
                             handle.cancel(terminate_containers=True)
                         except Exception:
@@ -848,36 +787,41 @@ def dispatch_and_collect(
                                 "workers_cancelled": workers_cancelled,
                             }
                         )
-                        continue
+                    break
+
+                if not active:
+                    _top_up_active_jobs()
+                    if not active:
+                        break
+
+                job, handle = active.popleft()
+                print(f"  Waiting for {job['job_id']}...")
+                if stop_requested():
                     try:
-                        while True:
-                            if stop_requested():
-                                try:
-                                    handle.cancel(terminate_containers=True)
-                                except Exception:
-                                    pass
-                                workers_cancelled += 1
-                                emit(
-                                    {
-                                        "event": "worker_cancelled",
-                                        "job_id": job["job_id"],
-                                        "job_kind": job["kind"],
-                                        "workers_total": workers_total,
-                                        "workers_submitted": workers_submitted,
-                                        "workers_completed": workers_completed,
-                                        "workers_failed": workers_failed,
-                                        "workers_cancelled": workers_cancelled,
-                                    }
-                                )
-                                payload = None
-                                break
-                            try:
-                                payload = handle.get(timeout=1.0)
-                                break
-                            except TimeoutError:
-                                continue
-                    except Exception as e:
+                        handle.cancel(terminate_containers=True)
+                    except Exception:
+                        pass
+                    workers_cancelled += 1
+                    emit(
+                        {
+                            "event": "worker_cancelled",
+                            "job_id": job["job_id"],
+                            "job_kind": job["kind"],
+                            "workers_total": workers_total,
+                            "workers_submitted": workers_submitted,
+                            "workers_completed": workers_completed,
+                            "workers_failed": workers_failed,
+                            "workers_cancelled": workers_cancelled,
+                        }
+                    )
+                    continue
+                try:
+                    while True:
                         if stop_requested():
+                            try:
+                                handle.cancel(terminate_containers=True)
+                            except Exception:
+                                pass
                             workers_cancelled += 1
                             emit(
                                 {
@@ -891,111 +835,52 @@ def dispatch_and_collect(
                                     "workers_cancelled": workers_cancelled,
                                 }
                             )
+                            payload = None
+                            break
+                        try:
+                            payload = handle.get(timeout=1.0)
+                            break
+                        except TimeoutError:
                             continue
-                        error_text = str(e).strip() or repr(e)
-                        workers_failed += 1
-                        worker_results.append(
-                            {
-                                "job_id": job["job_id"],
-                                "job_kind": job["kind"],
-                                "ok": False,
-                                "error": error_text,
-                                "seed_count": len(job["coords"]),
-                                "locations_returned": 0,
-                                "panoramas_saved": 0,
-                                "captures_saved": 0,
-                                "stats": {},
-                            }
-                        )
-                        if job["kind"] == "seed-retry":
-                            retries_failed += 1
+                except Exception as e:
+                    if stop_requested():
+                        workers_cancelled += 1
                         emit(
                             {
-                                "event": "worker_failed",
+                                "event": "worker_cancelled",
                                 "job_id": job["job_id"],
                                 "job_kind": job["kind"],
-                                "error": error_text,
                                 "workers_total": workers_total,
                                 "workers_submitted": workers_submitted,
                                 "workers_completed": workers_completed,
                                 "workers_failed": workers_failed,
-                                "retries_queued": retries_queued,
-                                "retries_completed": retries_completed,
-                                "retries_failed": retries_failed,
+                                "workers_cancelled": workers_cancelled,
                             }
                         )
-                        # If a whole batch call fails, retry each seed individually once.
-                        if job["kind"] == "batch" and not stop_requested():
-                            for lat, lon in job["coords"]:
-                                key = f"{round(lat, 6)},{round(lon, 6)}"
-                                if key in retried_seed_keys:
-                                    continue
-                                retried_seed_keys.add(key)
-                                pending_jobs.append(
-                                    {
-                                        "job_id": f"retry-{job_counter}",
-                                        "kind": "seed-retry",
-                                        "coords": [(lat, lon)],
-                                    }
-                                )
-                                job_counter += 1
-                                workers_total += 1
-                                retries_queued += 1
-                                failed_seed_reasons[key] = "batch-call-failed"
-                                emit(
-                                    {
-                                        "event": "retry_enqueued",
-                                        "seed": {"lat": lat, "lon": lon},
-                                        "reason": "batch-call-failed",
-                                        "workers_total": workers_total,
-                                        "workers_submitted": workers_submitted,
-                                        "workers_completed": workers_completed,
-                                        "workers_failed": workers_failed,
-                                        "retries_queued": retries_queued,
-                                    }
-                                )
                         continue
-
-                    if payload is None:
-                        continue
-
-                    results = payload.get("results", []) if isinstance(payload, dict) else []
-                    failed_seeds = payload.get("failed_seeds", []) if isinstance(payload, dict) else []
-                    worker_stats = payload.get("stats", {}) if isinstance(payload, dict) else {}
-
-                    saved = save_results_to_local_db(
-                        results,
-                        db_path,
-                        captures_dir,
-                        capture_profile=capture_profile,
-                        capture_kind=capture_kind,
-                        missing_only=missing_only,
+                    error_text = str(e).strip() or repr(e)
+                    workers_failed += 1
+                    worker_results.append(
+                        {
+                            "job_id": job["job_id"],
+                            "job_kind": job["kind"],
+                            "ok": False,
+                            "error": error_text,
+                            "seed_count": len(job["coords"]),
+                            "locations_returned": 0,
+                            "panoramas_saved": 0,
+                            "captures_saved": 0,
+                            "stats": {},
+                        }
                     )
-                    workers_completed += 1
                     if job["kind"] == "seed-retry":
-                        retries_completed += 1
-                    total_panos += saved["panoramas_saved"]
-                    total_captures += saved["captures_saved"]
-                    total_embeddings += int(saved.get("embeddings_saved", 0))
-                    total_embedding_errors += int(saved.get("embedding_errors", 0))
-
-                    worker_result = {
-                        "job_id": job["job_id"],
-                        "job_kind": job["kind"],
-                        "ok": True,
-                        "seed_count": len(job["coords"]),
-                        "locations_returned": len(results),
-                        "panoramas_saved": saved["panoramas_saved"],
-                        "captures_saved": saved["captures_saved"],
-                        "embeddings_saved": int(saved.get("embeddings_saved", 0)),
-                        "embedding_errors": int(saved.get("embedding_errors", 0)),
-                        "stats": worker_stats,
-                    }
-                    worker_results.append(worker_result)
+                        retries_failed += 1
                     emit(
                         {
-                            "event": "worker_completed",
-                            **worker_result,
+                            "event": "worker_failed",
+                            "job_id": job["job_id"],
+                            "job_kind": job["kind"],
+                            "error": error_text,
                             "workers_total": workers_total,
                             "workers_submitted": workers_submitted,
                             "workers_completed": workers_completed,
@@ -1005,13 +890,9 @@ def dispatch_and_collect(
                             "retries_failed": retries_failed,
                         }
                     )
-
-                    # Retry failed seeds individually once (for initial batch jobs only).
+                    # If a whole batch call fails, retry each seed individually once.
                     if job["kind"] == "batch" and not stop_requested():
-                        for seed in failed_seeds:
-                            lat = float(seed["lat"])
-                            lon = float(seed["lon"])
-                            reason = seed.get("reason", "unknown")
+                        for lat, lon in job["coords"]:
                             key = f"{round(lat, 6)},{round(lon, 6)}"
                             if key in retried_seed_keys:
                                 continue
@@ -1026,12 +907,12 @@ def dispatch_and_collect(
                             job_counter += 1
                             workers_total += 1
                             retries_queued += 1
-                            failed_seed_reasons[key] = reason
+                            failed_seed_reasons[key] = "batch-call-failed"
                             emit(
                                 {
                                     "event": "retry_enqueued",
                                     "seed": {"lat": lat, "lon": lon},
-                                    "reason": reason,
+                                    "reason": "batch-call-failed",
                                     "workers_total": workers_total,
                                     "workers_submitted": workers_submitted,
                                     "workers_completed": workers_completed,
@@ -1039,6 +920,99 @@ def dispatch_and_collect(
                                     "retries_queued": retries_queued,
                                 }
                             )
+                    _top_up_active_jobs()
+                    continue
+
+                if payload is None:
+                    _top_up_active_jobs()
+                    continue
+
+                results = payload.get("results", []) if isinstance(payload, dict) else []
+                failed_seeds = payload.get("failed_seeds", []) if isinstance(payload, dict) else []
+                worker_stats = payload.get("stats", {}) if isinstance(payload, dict) else {}
+
+                # Refill the freed remote slot before local DB/image work so the
+                # ephemeral Modal app stays active even when local post-processing
+                # is slower than the remote scrape calls.
+                _top_up_active_jobs()
+
+                saved = save_results_to_local_db(
+                    results,
+                    db_path,
+                    captures_dir,
+                    capture_profile=capture_profile,
+                    capture_kind=capture_kind,
+                    missing_only=missing_only,
+                )
+                workers_completed += 1
+                if job["kind"] == "seed-retry":
+                    retries_completed += 1
+                total_panos += saved["panoramas_saved"]
+                total_captures += saved["captures_saved"]
+                total_embeddings += int(saved.get("embeddings_saved", 0))
+                total_embedding_errors += int(saved.get("embedding_errors", 0))
+
+                worker_result = {
+                    "job_id": job["job_id"],
+                    "job_kind": job["kind"],
+                    "ok": True,
+                    "seed_count": len(job["coords"]),
+                    "locations_returned": len(results),
+                    "panoramas_saved": saved["panoramas_saved"],
+                    "captures_saved": saved["captures_saved"],
+                    "embeddings_saved": int(saved.get("embeddings_saved", 0)),
+                    "embedding_errors": int(saved.get("embedding_errors", 0)),
+                    "stats": worker_stats,
+                }
+                worker_results.append(worker_result)
+                emit(
+                    {
+                        "event": "worker_completed",
+                        **worker_result,
+                        "workers_total": workers_total,
+                        "workers_submitted": workers_submitted,
+                        "workers_completed": workers_completed,
+                        "workers_failed": workers_failed,
+                        "retries_queued": retries_queued,
+                        "retries_completed": retries_completed,
+                        "retries_failed": retries_failed,
+                    }
+                )
+
+                # Retry failed seeds individually once (for initial batch jobs only).
+                if job["kind"] == "batch" and not stop_requested():
+                    for seed in failed_seeds:
+                        lat = float(seed["lat"])
+                        lon = float(seed["lon"])
+                        reason = seed.get("reason", "unknown")
+                        key = f"{round(lat, 6)},{round(lon, 6)}"
+                        if key in retried_seed_keys:
+                            continue
+                        retried_seed_keys.add(key)
+                        pending_jobs.append(
+                            {
+                                "job_id": f"retry-{job_counter}",
+                                "kind": "seed-retry",
+                                "coords": [(lat, lon)],
+                            }
+                        )
+                        job_counter += 1
+                        workers_total += 1
+                        retries_queued += 1
+                        failed_seed_reasons[key] = reason
+                        emit(
+                            {
+                                "event": "retry_enqueued",
+                                "seed": {"lat": lat, "lon": lon},
+                                "reason": reason,
+                                "workers_total": workers_total,
+                                "workers_submitted": workers_submitted,
+                                "workers_completed": workers_completed,
+                                "workers_failed": workers_failed,
+                                "retries_queued": retries_queued,
+                            }
+                        )
+                _top_up_active_jobs()
     except Exception as e:
         error_text = str(e).strip() or repr(e)
         if "app is stopped or disabled" in error_text.lower():

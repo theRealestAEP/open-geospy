@@ -11,14 +11,14 @@ VECTOR_BACKEND_LANCEDB = "lancedb"
 
 
 def normalize_vector_backend(value: Optional[str]) -> str:
-    raw = str(value or VECTOR_BACKEND_POSTGRES).strip().lower()
+    raw = str(value or VECTOR_BACKEND_LANCEDB).strip().lower()
     if raw in {"lance", VECTOR_BACKEND_LANCEDB}:
         return VECTOR_BACKEND_LANCEDB
     return VECTOR_BACKEND_POSTGRES
 
 
 def get_configured_vector_backend() -> str:
-    return normalize_vector_backend(os.getenv("GEOSPY_VECTOR_BACKEND", "postgres"))
+    return normalize_vector_backend(os.getenv("GEOSPY_VECTOR_BACKEND", VECTOR_BACKEND_LANCEDB))
 
 
 def _quote_sql_literal(value: str) -> str:
@@ -34,6 +34,12 @@ class PostgresVectorStore:
 
     def supports_writes(self) -> bool:
         return True
+
+    def supports_missing_embedding_backfill(self) -> bool:
+        return True
+
+    def is_write_ready(self) -> bool:
+        return self.is_vector_ready()
 
     def is_vector_ready(self) -> bool:
         return bool(self.db.is_vector_ready())
@@ -134,7 +140,17 @@ class LanceVectorStore:
         self.embedding_base_column = str(embedding_base_column or "").strip()
 
     def supports_writes(self) -> bool:
+        return True
+
+    def supports_missing_embedding_backfill(self) -> bool:
         return False
+
+    def is_write_ready(self) -> bool:
+        try:
+            self._connect()
+            return True
+        except Exception:
+            return False
 
     def _connect(self):
         cached = self._connection_cache.get(self.uri)
@@ -180,6 +196,90 @@ class LanceVectorStore:
                 "Run the pgvector -> LanceDB sync script first."
             )
         return table
+
+    def _table_uses_embedding_base_column(self, table) -> bool:
+        if not self.embedding_base_column:
+            return False
+        try:
+            schema = table.schema
+            names = set(getattr(schema, "names", []) or [])
+        except Exception:
+            names = set()
+        return self.embedding_base_column in names
+
+    def _build_lance_payload(
+        self,
+        capture_vectors: Sequence[Tuple[int, Sequence[float]]],
+        *,
+        model_name: str,
+        model_version: str,
+        embedding_base: str,
+        include_embedding_base: bool,
+    ) -> List[dict]:
+        payload: List[dict] = []
+        for capture_id, embedding in capture_vectors:
+            row = {
+                "capture_id": int(capture_id),
+                "model_name": str(model_name),
+                "model_version": str(model_version),
+                self.vector_column_name: [float(v) for v in embedding],
+            }
+            if include_embedding_base and self.embedding_base_column:
+                row[self.embedding_base_column] = str(embedding_base)
+            payload.append(row)
+        return payload
+
+    def _create_table_for_payload(self, payload: List[dict], *, include_embedding_base: bool):
+        conn = self._connect()
+        try:
+            import pyarrow as pa
+        except ImportError:
+            return conn.create_table(self.table_name, data=payload)
+
+        first_vector = list(payload[0].get(self.vector_column_name) or [])
+        embedding_dim = len(first_vector)
+        if embedding_dim <= 0:
+            raise RuntimeError("Cannot create LanceDB table with empty embedding vectors")
+
+        fields = [
+            pa.field("capture_id", pa.int64(), nullable=False),
+            pa.field("model_name", pa.string(), nullable=False),
+            pa.field("model_version", pa.string(), nullable=False),
+        ]
+        if include_embedding_base and self.embedding_base_column:
+            fields.append(pa.field(self.embedding_base_column, pa.string(), nullable=False))
+        fields.append(
+            pa.field(
+                self.vector_column_name,
+                pa.list_(pa.float32(), embedding_dim),
+                nullable=False,
+            )
+        )
+        return conn.create_table(
+            self.table_name,
+            data=payload,
+            schema=pa.schema(fields),
+        )
+
+    def _delete_existing_rows(self, table, payload: Sequence[dict], *, include_embedding_base: bool):
+        delete_terms: List[str] = []
+        for row in payload:
+            clauses = [
+                f"capture_id = {int(row['capture_id'])}",
+                f"model_name = {_quote_sql_literal(str(row['model_name']))}",
+                f"model_version = {_quote_sql_literal(str(row['model_version']))}",
+            ]
+            if include_embedding_base and self.embedding_base_column:
+                clauses.append(
+                    f"{self.embedding_base_column} = "
+                    f"{_quote_sql_literal(str(row[self.embedding_base_column]))}"
+                )
+            delete_terms.append(f"({' AND '.join(clauses)})")
+            if len(delete_terms) >= 128:
+                table.delete(" OR ".join(delete_terms))
+                delete_terms = []
+        if delete_terms:
+            table.delete(" OR ".join(delete_terms))
 
     def _model_filter(
         self, model_name: str, model_version: str, embedding_base: str
@@ -238,7 +338,9 @@ class LanceVectorStore:
         after_capture_id: int = 0,
         embedding_base: str = EMBEDDING_BASE_CLIP,
     ) -> List[dict]:
-        raise RuntimeError("LanceDB backend currently runs in search-only mode")
+        raise RuntimeError(
+            "LanceDB backend does not yet support missing-embedding backfill queries"
+        )
 
     def upsert_capture_embedding(
         self,
@@ -248,7 +350,12 @@ class LanceVectorStore:
         embedding: Sequence[float],
         embedding_base: str = EMBEDDING_BASE_CLIP,
     ):
-        raise RuntimeError("LanceDB backend currently runs in search-only mode")
+        return self.upsert_capture_embeddings_batch(
+            [(capture_id, embedding)],
+            model_name,
+            model_version,
+            embedding_base=embedding_base,
+        )
 
     def upsert_capture_embeddings_batch(
         self,
@@ -257,7 +364,42 @@ class LanceVectorStore:
         model_version: str,
         embedding_base: str = EMBEDDING_BASE_CLIP,
     ) -> int:
-        raise RuntimeError("LanceDB backend currently runs in search-only mode")
+        rows = list(capture_vectors)
+        if not rows:
+            return 0
+
+        table = self._open_table_or_none()
+        include_embedding_base = bool(self.embedding_base_column)
+        if table is not None:
+            include_embedding_base = self._table_uses_embedding_base_column(table)
+            if self.embedding_base_column and not include_embedding_base:
+                log.warning(
+                    "LanceDB table=%s is missing embedding base column=%s; writing without it",
+                    self.table_name,
+                    self.embedding_base_column,
+                )
+
+        payload = self._build_lance_payload(
+            rows,
+            model_name=model_name,
+            model_version=model_version,
+            embedding_base=embedding_base,
+            include_embedding_base=include_embedding_base,
+        )
+        if table is None:
+            self._create_table_for_payload(
+                payload,
+                include_embedding_base=include_embedding_base,
+            )
+            return len(payload)
+
+        self._delete_existing_rows(
+            table,
+            payload,
+            include_embedding_base=include_embedding_base,
+        )
+        table.add(payload)
+        return len(payload)
 
     def search_captures_by_embedding(
         self,
@@ -334,4 +476,3 @@ def build_vector_store(db):
             embedding_base_column=os.getenv("GEOSPY_LANCEDB_EMBEDDING_BASE_COLUMN", ""),
         )
     return PostgresVectorStore(db)
-

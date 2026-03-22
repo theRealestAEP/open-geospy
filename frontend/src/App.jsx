@@ -25,9 +25,29 @@ const LEGACY_ACTIVE_SCAN_STORAGE_KEY = 'geospy.active_scan_id';
 const retrievalControlHelp = {
   reference_image: 'Upload the photo you want to search.',
   search_top_k: 'How many nearest results to return in Search mode.',
+  locate_top_k: 'How many location-family predictions to return in Locate mode.',
   min_similarity: 'Optional floor for match similarity. Higher values are stricter and may reduce recall.',
   embedding_base: 'Choose which embedding set to search against.'
 };
+
+function buildLocatePipelineStages(activeKey = 'vector_search', status = 'running') {
+  const stageOrder = [
+    ['vector_search', 'Vector search'],
+    ['panorama_rerank', 'Panorama aggregation'],
+    ['family_rank', 'Panorama-family ranking']
+  ];
+  let seenActive = false;
+  return stageOrder.map(([key, title]) => {
+    let stageStatus = 'pending';
+    if (key === activeKey) {
+      stageStatus = status;
+      seenActive = true;
+    } else if (!seenActive) {
+      stageStatus = 'completed';
+    }
+    return { key, title, status: stageStatus, detail: '' };
+  });
+}
 
 function formatRetrievalModelLabel(modelName, modelVersion) {
   const name = String(modelName || '').trim();
@@ -113,6 +133,12 @@ function App() {
   const [retrievalBusy, setRetrievalBusy] = useState(false);
   const [retrievalResults, setRetrievalResults] = useState([]);
   const [topSearchCaptureId, setTopSearchCaptureId] = useState(null);
+  const [locateTopK, setLocateTopK] = useState(8);
+  const [locateStatus, setLocateStatus] = useState('');
+  const [locateBusy, setLocateBusy] = useState(false);
+  const [locateResults, setLocateResults] = useState([]);
+  const [topLocateFamilyId, setTopLocateFamilyId] = useState(null);
+  const [locatePipeline, setLocatePipeline] = useState({ stages: [] });
   const [retrievalEmbeddingBase, setRetrievalEmbeddingBase] = useState('clip');
   const [retrievalEmbeddingBaseOptions, setRetrievalEmbeddingBaseOptions] = useState([
     { value: 'clip', label: 'CLIP' }
@@ -127,6 +153,8 @@ function App() {
   });
   const isScanPage = location.pathname === '/scan' || location.pathname === '/';
   const isSearchPage = location.pathname === '/search';
+  const isLocatePage = location.pathname === '/locate';
+  const currentWorkerLimit = scanForm.mode === 'modal' ? 100 : 32;
 
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
@@ -528,11 +556,11 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (location.pathname === '/locate') {
-      navigate('/search', { replace: true });
-      return;
-    }
-    if (location.pathname !== '/scan' && location.pathname !== '/search') {
+    if (
+      location.pathname !== '/scan' &&
+      location.pathname !== '/search' &&
+      location.pathname !== '/locate'
+    ) {
       navigate('/scan', { replace: true });
     }
   }, [location.pathname, navigate]);
@@ -1119,10 +1147,68 @@ function App() {
     }
   };
 
+  const runImageLocate = async () => {
+    if (!retrievalFile) {
+      setLocateStatus('Pick a reference image first.');
+      return;
+    }
+    setLocateBusy(true);
+    clearSearchFallbackMarker();
+    setLocatePipeline({ stages: buildLocatePipelineStages('vector_search', 'running') });
+    setLocateStatus('Locating image...');
+    try {
+      const formData = new FormData();
+      formData.append('image', retrievalFile);
+      formData.append('top_k', String(Math.max(1, Number(locateTopK) || 8)));
+      const minSimilarityRaw = String(retrievalMinSimilarity ?? '').trim();
+      if (minSimilarityRaw !== '') {
+        const parsedSimilarity = Number(minSimilarityRaw);
+        if (!Number.isNaN(parsedSimilarity)) {
+          formData.append('min_similarity', String(parsedSimilarity));
+        }
+      }
+      const res = await fetch('/api/retrieval/locate-by-image', {
+        method: 'POST',
+        body: formData
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        setLocateStatus(`Locate failed: ${body?.detail || 'unknown error'}`);
+        setLocateResults([]);
+        setTopLocateFamilyId(null);
+        setLocatePipeline({ stages: buildLocatePipelineStages('vector_search', 'failed') });
+        return;
+      }
+      const matches = Array.isArray(body.matches) ? body.matches : [];
+      const pipelineStages = Array.isArray(body?.pipeline?.stages) ? body.pipeline.stages : [];
+      setLocateResults(matches);
+      setTopLocateFamilyId(matches.length ? String(matches[0].family_id || '') : null);
+      setLocatePipeline({
+        stages: pipelineStages.length
+          ? pipelineStages
+          : buildLocatePipelineStages('family_rank', 'completed')
+      });
+      if (matches.length) {
+        await focusRetrievalResult(matches[0]);
+      }
+      setLocateStatus(
+        `Found ${matches.length} location families from ${Number(body.capture_candidates || 0)} capture candidates.`
+      );
+      await loadRetrievalStats();
+    } catch (error) {
+      setLocateStatus(`Locate failed: ${error.message}`);
+      setLocateResults([]);
+      setTopLocateFamilyId(null);
+      setLocatePipeline({ stages: buildLocatePipelineStages('vector_search', 'failed') });
+    } finally {
+      setLocateBusy(false);
+    }
+  };
+
   const focusRetrievalResult = async (result) => {
     const map = mapRef.current;
-    const lat = Number(result?.lat);
-    const lon = Number(result?.lon);
+    const lat = Number(result?.family_center_lat ?? result?.lat);
+    const lon = Number(result?.family_center_lon ?? result?.lon);
     const hasLocalImage = Boolean(String(result?.web_path || '').trim());
     clearSearchFallbackMarker();
     if (map && Number.isFinite(lat) && Number.isFinite(lon)) {
@@ -1216,6 +1302,12 @@ function App() {
           >
             Search
           </button>
+          <button
+            className={isLocatePage ? '' : 'ghost'}
+            onClick={() => navigate('/locate')}
+          >
+            Locate
+          </button>
         </div>
 
         <section className="card">
@@ -1269,7 +1361,16 @@ function App() {
             <label>Max lon<input value={scanForm.maxLon} onChange={(e) => onScanField('maxLon', e.target.value)} /></label>
           </div>
           <div className="grid2">
-            <label>Workers<input value={scanForm.workers} onChange={(e) => onScanField('workers', e.target.value)} /></label>
+            <label>
+              Workers
+              <input
+                value={scanForm.workers}
+                min="1"
+                max={String(currentWorkerLimit)}
+                onChange={(e) => onScanField('workers', e.target.value)}
+              />
+              <span className="fieldHint">Limit: {currentWorkerLimit} for {scanForm.mode} mode.</span>
+            </label>
             <label>Step m<input value={scanForm.stepMeters} onChange={(e) => onScanField('stepMeters', e.target.value)} /></label>
             <label>Dedup m<input value={scanForm.dedupRadius} onChange={(e) => onScanField('dedupRadius', e.target.value)} /></label>
                 <label>Fill gap m<input value={scanForm.fillGapMeters} onChange={(e) => onScanField('fillGapMeters', e.target.value)} /></label>
@@ -1465,6 +1566,147 @@ function App() {
             )}
           </div>
         </section>
+          </>
+        ) : null}
+
+        {isLocatePage ? (
+          <>
+            <section className="card">
+              <h2>Locate image</h2>
+              <p className="hint">
+                Uses all active embedding families, then reranks by panorama-family clusters.
+              </p>
+              <label title={retrievalControlHelp.reference_image}>
+                Reference image
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setRetrievalFile(e.target.files?.[0] || null)}
+                />
+              </label>
+              <div className="grid2">
+                <label title={retrievalControlHelp.locate_top_k}>
+                  Locate Top K
+                  <input
+                    type="number"
+                    min="1"
+                    max="50"
+                    value={locateTopK}
+                    onChange={(e) => setLocateTopK(e.target.value)}
+                  />
+                </label>
+                <label title={retrievalControlHelp.min_similarity}>
+                  Min similarity
+                  <input
+                    type="number"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    value={retrievalMinSimilarity}
+                    onChange={(e) => setRetrievalMinSimilarity(e.target.value)}
+                    placeholder="optional"
+                  />
+                </label>
+              </div>
+              <div className="buttonRow">
+                <button onClick={runImageLocate} disabled={locateBusy}>
+                  {locateBusy ? 'Locating...' : 'Locate by image'}
+                </button>
+                <button
+                  className="ghost"
+                  onClick={() => {
+                    setLocateResults([]);
+                    setLocateStatus('');
+                    setTopLocateFamilyId(null);
+                    setLocatePipeline({ stages: [] });
+                    clearSearchFallbackMarker();
+                  }}
+                  disabled={locateBusy}
+                >
+                  Clear
+                </button>
+              </div>
+              <div className="locatorPipelineCard">
+                <h3>Locator pipeline</h3>
+                <div className="pipelineStageList">
+                  {(locatePipeline.stages || []).map((stage) => (
+                    <div
+                      key={stage.key}
+                      className={`pipelineStage pipelineStage-${String(stage.status || 'pending').toLowerCase()}`}
+                    >
+                      <span className="pipelineDot" />
+                      <div className="pipelineStageBody">
+                        <div>
+                          <div className="pipelineStageTitle">{stage.title}</div>
+                          {stage.detail ? <div className="hint">{stage.detail}</div> : null}
+                        </div>
+                        <div className="pipelineStageStatus">{stage.status || 'pending'}</div>
+                      </div>
+                    </div>
+                  ))}
+                  {(!locatePipeline.stages || locatePipeline.stages.length === 0) ? (
+                    <p className="hint">No locate request yet.</p>
+                  ) : null}
+                </div>
+              </div>
+              <p className="status">{locateStatus}</p>
+              <div className="retrievalGrid">
+                {locateResults.map((result) => (
+                  <button
+                    key={result.family_id || result.panorama_id}
+                    className={`retrievalItem ${
+                      String(result.family_id || '') === String(topLocateFamilyId || '')
+                        ? 'retrievalItemBest'
+                        : ''
+                    }`}
+                    onClick={() => focusRetrievalResult(result)}
+                    title={`family score ${(Number(result.family_score || 0)).toFixed(3)}`}
+                  >
+                    {String(result.web_path || '').trim() ? (
+                      <img src={result.web_path} alt={`family ${result.family_id || result.panorama_id}`} />
+                    ) : (
+                      <div className="retrievalItemPlaceholder">
+                        No local image
+                        <span>
+                          {Number.isFinite(Number(result.family_center_lat ?? result.lat)) &&
+                          Number.isFinite(Number(result.family_center_lon ?? result.lon))
+                            ? `${Number(result.family_center_lat ?? result.lat).toFixed(6)}, ${Number(result.family_center_lon ?? result.lon).toFixed(6)}`
+                            : 'Coordinates unavailable'}
+                        </span>
+                      </div>
+                    )}
+                    <span>family score {(Number(result.family_score || 0)).toFixed(3)}</span>
+                    <span>
+                      {Number(result.family_panorama_count || 0)} panoramas | {Number(result.family_capture_hits || 0)} capture hits
+                    </span>
+                    {String(result.family_id || '') === String(topLocateFamilyId || '') ? (
+                      <span className="bestMatchTag">Top family</span>
+                    ) : null}
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            <section id="preview" className="card">
+              <h2>Preview</h2>
+              <div className="coords">{preview.title}</div>
+              <div className="previewGrid">
+                {preview.captures.length ? (
+                  preview.captures.map((c) => (
+                    String(c.src || '').trim() ? (
+                      <img key={c.id} src={c.src} alt={`heading ${c.heading}`} title={`${c.heading} deg`} />
+                    ) : (
+                      <div key={c.id} className="retrievalItemPlaceholder">
+                        No local image
+                        <span>heading {Number(c.heading || 0)}</span>
+                      </div>
+                    )
+                  ))
+                ) : (
+                  <p className="hint">Run locate and click a family to preview captures.</p>
+                )}
+              </div>
+            </section>
           </>
         ) : null}
       </aside>

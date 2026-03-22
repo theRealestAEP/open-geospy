@@ -250,7 +250,7 @@ def main():
     parser.add_argument("--max-items", type=int, default=0)
     parser.add_argument(
         "--embedding-base",
-        choices=["clip", "pigeon"],
+        choices=["clip", "place"],
         default=os.getenv("GEOSPY_RETRIEVAL_EMBEDDING_BASE_DEFAULT", "clip"),
         help="Embedding base/model family to index into capture_embeddings.",
     )
@@ -333,7 +333,7 @@ def main():
     if modal_mode and has_hf_runtime and not (has_hf_token or has_modal_hf_secret):
         raise SystemExit(
             "Modal HF auth missing: set HF_TOKEN/HUGGING_FACE_HUB_TOKEN "
-            "or GEOSPY_MODAL_HF_SECRET_NAME before running pigeon modal backfill."
+            "or GEOSPY_MODAL_HF_SECRET_NAME before running place-model modal backfill."
         )
 
     if modal_mode:

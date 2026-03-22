@@ -1,0 +1,4660 @@
+{
+  "source_capture": {
+    "capture_id": 1227639,
+    "panorama_id": 5548,
+    "lat": 37.7823365,
+    "lon": -122.4501723,
+    "heading": 345.0,
+    "pitch": 75.0,
+    "source_image": "/Users/alexpickett/Desktop/Projects/geoSpy/eval/datasets/smoke_inputs/source_capture_h345_p075_full.jpg",
+    "crop_image": "/Users/alexpickett/Desktop/Projects/geoSpy/eval/datasets/smoke_inputs/source_capture_h345_p075_crop_building_patch.jpg",
+    "crop_box_xyxy": [
+      540,
+      70,
+      980,
+      330
+    ]
+  },
+  "full": {
+    "search": {
+      "status_code": 200,
+      "json": {
+        "retrieval_id": "a7fb997746b8",
+        "embedding_base": "clip",
+        "model_name": "ViT-B-32",
+        "model_version": "open_clip",
+        "models": [
+          {
+            "model_id": "clip",
+            "model_name": "ViT-B-32",
+            "model_version": "open_clip",
+            "embedding_base": "clip",
+            "weight": 1.0
+          }
+        ],
+        "skipped_models": [],
+        "failed_models": [],
+        "matches": [
+          {
+            "capture_id": 1227639,
+            "panorama_id": 5548,
+            "heading": 345.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "enrich",
+            "filepath": "captures/lUVo-bhDJ6rhe_owPmk24w/h345_p075_high_v1.jpg",
+            "pano_id": "lUVo-bhDJ6rhe_owPmk24w",
+            "lat": 37.7823365,
+            "lon": -122.4501723,
+            "similarity": 1.0,
+            "score": 1.0,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 1.0
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/lUVo-bhDJ6rhe_owPmk24w/h345_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 1227663,
+            "panorama_id": 5548,
+            "heading": 345.0,
+            "pitch": 90.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "enrich",
+            "filepath": "captures/lUVo-bhDJ6rhe_owPmk24w/h345_p090_high_v1.jpg",
+            "pano_id": "lUVo-bhDJ6rhe_owPmk24w",
+            "lat": 37.7823365,
+            "lon": -122.4501723,
+            "similarity": 0.9547920173158734,
+            "score": 0.9547920173158734,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.9547920173158734
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/lUVo-bhDJ6rhe_owPmk24w/h345_p090_high_v1.jpg"
+          },
+          {
+            "capture_id": 1227638,
+            "panorama_id": 5548,
+            "heading": 330.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "enrich",
+            "filepath": "captures/lUVo-bhDJ6rhe_owPmk24w/h330_p075_high_v1.jpg",
+            "pano_id": "lUVo-bhDJ6rhe_owPmk24w",
+            "lat": 37.7823365,
+            "lon": -122.4501723,
+            "similarity": 0.9475441261394065,
+            "score": 0.9475441261394065,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.9475441261394065
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/lUVo-bhDJ6rhe_owPmk24w/h330_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 2706482,
+            "panorama_id": 19492,
+            "heading": 165.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/jGCWR3XDOx7H0iaHEBTA7A/h165_p075_high_v1.jpg",
+            "pano_id": "jGCWR3XDOx7H0iaHEBTA7A",
+            "lat": 37.7498584,
+            "lon": -122.4149759,
+            "similarity": 0.9106934017356294,
+            "score": 0.9106934017356294,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.9106934017356294
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/jGCWR3XDOx7H0iaHEBTA7A/h165_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 2820368,
+            "panorama_id": 20204,
+            "heading": 345.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/6Gws8qVdeSQ_jDtywkYCoQ/h345_p075_high_v1.jpg",
+            "pano_id": "6Gws8qVdeSQ_jDtywkYCoQ",
+            "lat": 37.7525453,
+            "lon": -122.428657,
+            "similarity": 0.9093290567398071,
+            "score": 0.9093290567398071,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.9093290567398071
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/6Gws8qVdeSQ_jDtywkYCoQ/h345_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 3358634,
+            "panorama_id": 23272,
+            "heading": 345.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/gTIWStKAC0LmsMEBh_gL4A/h345_p075_high_v1.jpg",
+            "pano_id": "gTIWStKAC0LmsMEBh_gL4A",
+            "lat": 37.7612923,
+            "lon": -122.4650905,
+            "similarity": 0.9089384187533421,
+            "score": 0.9089384187533421,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.9089384187533421
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/gTIWStKAC0LmsMEBh_gL4A/h345_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 2601247,
+            "panorama_id": 18733,
+            "heading": 240.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/ZqecN3jj4wfixzsYqZN-zA/h240_p075_high_v1.jpg",
+            "pano_id": "MuwS_J1NOKGKgnyUbipsFw",
+            "lat": 37.7472639,
+            "lon": -122.4667337,
+            "similarity": 0.9088460261317493,
+            "score": 0.9088460261317493,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.9088460261317493
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/ZqecN3jj4wfixzsYqZN-zA/h240_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 1775991,
+            "panorama_id": 7448,
+            "heading": 105.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "enrich",
+            "filepath": "captures/kYpWIFM7yhowM9Vztw7fow/h105_p075_high_v1.jpg",
+            "pano_id": "kYpWIFM7yhowM9Vztw7fow",
+            "lat": 37.7116938,
+            "lon": -122.4377584,
+            "similarity": 0.908536797253086,
+            "score": 0.908536797253086,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.908536797253086
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/kYpWIFM7yhowM9Vztw7fow/h105_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 2704437,
+            "panorama_id": 19477,
+            "heading": 90.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/4YTJtgV0pUI4x5Ol0wqItg/h090_p075_high_v1.jpg",
+            "pano_id": "4YTJtgV0pUI4x5Ol0wqItg",
+            "lat": 37.7500048,
+            "lon": -122.4291842,
+            "similarity": 0.9081720980457101,
+            "score": 0.9081720980457101,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.9081720980457101
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/4YTJtgV0pUI4x5Ol0wqItg/h090_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 3523573,
+            "panorama_id": 23934,
+            "heading": 75.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "fill",
+            "filepath": "captures/dIy2PDvUEk4UcHy155ED3w/h075_p075_high_v1.jpg",
+            "pano_id": "p6DcNfPmEf2KqUxvEhkhjA",
+            "lat": 37.710823,
+            "lon": -122.4468572,
+            "similarity": 0.9078306500810789,
+            "score": 0.9078306500810789,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.9078306500810789
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/dIy2PDvUEk4UcHy155ED3w/h075_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 4292741,
+            "panorama_id": 27317,
+            "heading": 45.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "fill",
+            "filepath": "captures/gO0S2sKctpZo7HZvKPLFEw/h045_p075_high_v1.jpg",
+            "pano_id": "mu5tGj0r9LTUMoPQexingw",
+            "lat": 37.7097464,
+            "lon": -122.452546,
+            "similarity": 0.9048981879560556,
+            "score": 0.9048981879560556,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.9048981879560556
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/gO0S2sKctpZo7HZvKPLFEw/h045_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 4335453,
+            "panorama_id": 27317,
+            "heading": 45.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "fill",
+            "filepath": "captures/gO0S2sKctpZo7HZvKPLFEw/h045_p075_high_v1.jpg",
+            "pano_id": "mu5tGj0r9LTUMoPQexingw",
+            "lat": 37.7097464,
+            "lon": -122.452546,
+            "similarity": 0.9048981879560556,
+            "score": 0.9048981879560556,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.9048981879560556
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/gO0S2sKctpZo7HZvKPLFEw/h045_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 1227662,
+            "panorama_id": 5548,
+            "heading": 330.0,
+            "pitch": 90.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "enrich",
+            "filepath": "captures/lUVo-bhDJ6rhe_owPmk24w/h330_p090_high_v1.jpg",
+            "pano_id": "lUVo-bhDJ6rhe_owPmk24w",
+            "lat": 37.7823365,
+            "lon": -122.4501723,
+            "similarity": 0.9034216942442489,
+            "score": 0.9034216942442489,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.9034216942442489
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/lUVo-bhDJ6rhe_owPmk24w/h330_p090_high_v1.jpg"
+          },
+          {
+            "capture_id": 3083264,
+            "panorama_id": 21823,
+            "heading": 0.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/QCvazVXYhQo7-HxBeMz-9A/h000_p075_high_v1.jpg",
+            "pano_id": "QCvazVXYhQo7-HxBeMz-9A",
+            "lat": 37.7583502,
+            "lon": -122.4842972,
+            "similarity": 0.9020182700769582,
+            "score": 0.9020182700769582,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.9020182700769582
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/QCvazVXYhQo7-HxBeMz-9A/h000_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 3083144,
+            "panorama_id": 21823,
+            "heading": 0.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/QCvazVXYhQo7-HxBeMz-9A/h000_p075_high_v1.jpg",
+            "pano_id": "QCvazVXYhQo7-HxBeMz-9A",
+            "lat": 37.7583502,
+            "lon": -122.4842972,
+            "similarity": 0.9020182700769582,
+            "score": 0.9020182700769582,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.9020182700769582
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/QCvazVXYhQo7-HxBeMz-9A/h000_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 2844235,
+            "panorama_id": 20362,
+            "heading": 150.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/Z5rZWuMAWGJpkSRuXjquaA/h150_p075_high_v1.jpg",
+            "pano_id": "Z5rZWuMAWGJpkSRuXjquaA",
+            "lat": 37.7529669,
+            "lon": -122.4014857,
+            "similarity": 0.9010648995955263,
+            "score": 0.9010648995955263,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.9010648995955263
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/Z5rZWuMAWGJpkSRuXjquaA/h150_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 771984,
+            "panorama_id": 9383,
+            "heading": 285.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/ijwnh0i5KV87juPdVIbqLA/h285_p075_high_v1.jpg",
+            "pano_id": "ijwnh0i5KV87juPdVIbqLA",
+            "lat": 37.7208119,
+            "lon": -122.4437589,
+            "similarity": 0.900604784488678,
+            "score": 0.900604784488678,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.900604784488678
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/ijwnh0i5KV87juPdVIbqLA/h285_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 3961315,
+            "panorama_id": 25809,
+            "heading": 270.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/5U-7bzEhpMz1WNxk9sfHEw/h270_p075_high_v1.jpg",
+            "pano_id": "ZxjE5aQTTtt-tz7mSWcbcw",
+            "lat": 37.7667808,
+            "lon": -122.4316409,
+            "similarity": 0.9004559516906738,
+            "score": 0.9004559516906738,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.9004559516906738
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/5U-7bzEhpMz1WNxk9sfHEw/h270_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 1006926,
+            "panorama_id": 5276,
+            "heading": 15.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "enrich",
+            "filepath": "captures/F8mo13e1gW4_-QYvxI-63g/h015_p075_high_v1.jpg",
+            "pano_id": "F8mo13e1gW4_-QYvxI-63g",
+            "lat": 37.7813943,
+            "lon": -122.4773105,
+            "similarity": 0.9002808332443237,
+            "score": 0.9002808332443237,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.9002808332443237
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/F8mo13e1gW4_-QYvxI-63g/h015_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 2383792,
+            "panorama_id": 17514,
+            "heading": 15.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/zUe8AsQQxBE1zKZp0JzCIg/h015_p075_high_v1.jpg",
+            "pano_id": "zUe8AsQQxBE1zKZp0JzCIg",
+            "lat": 37.7430969,
+            "lon": -122.4907555,
+            "similarity": 0.9000388383865356,
+            "score": 0.9000388383865356,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.9000388383865356
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/zUe8AsQQxBE1zKZp0JzCIg/h015_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 2383672,
+            "panorama_id": 17514,
+            "heading": 15.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/zUe8AsQQxBE1zKZp0JzCIg/h015_p075_high_v1.jpg",
+            "pano_id": "zUe8AsQQxBE1zKZp0JzCIg",
+            "lat": 37.7430969,
+            "lon": -122.4907555,
+            "similarity": 0.9000388383865356,
+            "score": 0.9000388383865356,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.9000388383865356
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/zUe8AsQQxBE1zKZp0JzCIg/h015_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 2481128,
+            "panorama_id": 17976,
+            "heading": 255.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/v2Dj3JuMN4zFXmVbratL-Q/h255_p075_high_v1.jpg",
+            "pano_id": "n1IdHXd8dEV4uocByUe5GA",
+            "lat": 37.7446151,
+            "lon": -122.4253369,
+            "similarity": 0.8999598294484569,
+            "score": 0.8999598294484569,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.8999598294484569
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/v2Dj3JuMN4zFXmVbratL-Q/h255_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 4292742,
+            "panorama_id": 27317,
+            "heading": 60.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "fill",
+            "filepath": "captures/gO0S2sKctpZo7HZvKPLFEw/h060_p075_high_v1.jpg",
+            "pano_id": "mu5tGj0r9LTUMoPQexingw",
+            "lat": 37.7097464,
+            "lon": -122.452546,
+            "similarity": 0.8997599422788601,
+            "score": 0.8997599422788601,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.8997599422788601
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/gO0S2sKctpZo7HZvKPLFEw/h060_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 4335454,
+            "panorama_id": 27317,
+            "heading": 60.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "fill",
+            "filepath": "captures/gO0S2sKctpZo7HZvKPLFEw/h060_p075_high_v1.jpg",
+            "pano_id": "mu5tGj0r9LTUMoPQexingw",
+            "lat": 37.7097464,
+            "lon": -122.452546,
+            "similarity": 0.8997599422788601,
+            "score": 0.8997599422788601,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.8997599422788601
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/gO0S2sKctpZo7HZvKPLFEw/h060_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 2842317,
+            "panorama_id": 20347,
+            "heading": 180.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/uxgh9j9-T03Dt4Db79OaVA/h180_p075_high_v1.jpg",
+            "pano_id": "uxgh9j9-T03Dt4Db79OaVA",
+            "lat": 37.7529666,
+            "lon": -122.4152506,
+            "similarity": 0.8995202243614079,
+            "score": 0.8995202243614079,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.8995202243614079
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/uxgh9j9-T03Dt4Db79OaVA/h180_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 3056886,
+            "panorama_id": 21654,
+            "heading": 330.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/0CSTBoaeI6rEcodyrgqsoQ/h330_p075_high_v1.jpg",
+            "pano_id": "0CSTBoaeI6rEcodyrgqsoQ",
+            "lat": 37.7578708,
+            "lon": -122.5046812,
+            "similarity": 0.8994358122012519,
+            "score": 0.8994358122012519,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.8994358122012519
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/0CSTBoaeI6rEcodyrgqsoQ/h330_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 2281214,
+            "panorama_id": 16715,
+            "heading": 300.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/oOzLut5rswBdB_SHnThGFg/h300_p075_high_v1.jpg",
+            "pano_id": "HskcOL1y7skoPufkSHmjew",
+            "lat": 37.7405279,
+            "lon": -122.4512982,
+            "similarity": 0.8990583419799805,
+            "score": 0.8990583419799805,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.8990583419799805
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/oOzLut5rswBdB_SHnThGFg/h300_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 549882,
+            "panorama_id": 2878,
+            "heading": 330.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "enrich",
+            "filepath": "captures/FD6MhxtY8mhn9dSlNdzDyA/h330_p075_high_v1.jpg",
+            "pano_id": "FD6MhxtY8mhn9dSlNdzDyA",
+            "lat": 37.772888,
+            "lon": -122.5024905,
+            "similarity": 0.8990347981452942,
+            "score": 0.8990347981452942,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.8990347981452942
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/FD6MhxtY8mhn9dSlNdzDyA/h330_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 215818,
+            "panorama_id": 7767,
+            "heading": 210.0,
+            "pitch": 90.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/Bi6P1qDlKXOaPHxKjaGuGw/h210_p090_high_v1.jpg",
+            "pano_id": "Bi6P1qDlKXOaPHxKjaGuGw",
+            "lat": 37.7128676,
+            "lon": -122.4371922,
+            "similarity": 0.8987937388647471,
+            "score": 0.8987937388647471,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.8987937388647471
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/Bi6P1qDlKXOaPHxKjaGuGw/h210_p090_high_v1.jpg"
+          },
+          {
+            "capture_id": 1227616,
+            "panorama_id": 5548,
+            "heading": 0.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "enrich",
+            "filepath": "captures/lUVo-bhDJ6rhe_owPmk24w/h000_p075_high_v1.jpg",
+            "pano_id": "lUVo-bhDJ6rhe_owPmk24w",
+            "lat": 37.7823365,
+            "lon": -122.4501723,
+            "similarity": 0.8987822532653809,
+            "score": 0.8987822532653809,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.8987822532653809
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/lUVo-bhDJ6rhe_owPmk24w/h000_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 26297,
+            "panorama_id": 5548,
+            "heading": 0.0,
+            "pitch": 75.0,
+            "capture_profile": "base",
+            "capture_kind": "scan",
+            "filepath": "captures/lUVo-bhDJ6rhe_owPmk24w/h000.jpg",
+            "pano_id": "lUVo-bhDJ6rhe_owPmk24w",
+            "lat": 37.7823365,
+            "lon": -122.4501723,
+            "similarity": 0.8987822532653809,
+            "score": 0.8987822532653809,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.8987822532653809
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/lUVo-bhDJ6rhe_owPmk24w/h000.jpg"
+          },
+          {
+            "capture_id": 3613674,
+            "panorama_id": 24591,
+            "heading": 165.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "fill",
+            "filepath": "captures/nl_LJKxwO5VomeNGQVdnHg/h165_p075_high_v1.jpg",
+            "pano_id": "XG1ppK5POIDHq-EYwAGuEw",
+            "lat": 37.7117489,
+            "lon": -122.4413704,
+            "similarity": 0.8982625068269682,
+            "score": 0.8982625068269682,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.8982625068269682
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/nl_LJKxwO5VomeNGQVdnHg/h165_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 4289741,
+            "panorama_id": 24591,
+            "heading": 165.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "fill",
+            "filepath": "captures/nl_LJKxwO5VomeNGQVdnHg/h165_p075_high_v1.jpg",
+            "pano_id": "XG1ppK5POIDHq-EYwAGuEw",
+            "lat": 37.7117489,
+            "lon": -122.4413704,
+            "similarity": 0.8982624946989132,
+            "score": 0.8982624946989132,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.8982624946989132
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/nl_LJKxwO5VomeNGQVdnHg/h165_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 3189717,
+            "panorama_id": 22214,
+            "heading": 195.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/jBwLKS34MKlqUcTpS-_kOQ/h195_p075_high_v1.jpg",
+            "pano_id": "Z4Nx5iCK4ZofUtEuGCPINw",
+            "lat": 37.7601099,
+            "lon": -122.5037616,
+            "similarity": 0.8979958235022932,
+            "score": 0.8979958235022932,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.8979958235022932
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/jBwLKS34MKlqUcTpS-_kOQ/h195_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 429981,
+            "panorama_id": 8532,
+            "heading": 0.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/Z0h76Bq-r3T3WaHBadiUJQ/h000_p075_high_v1.jpg",
+            "pano_id": "Z0h76Bq-r3T3WaHBadiUJQ",
+            "lat": 37.7171709,
+            "lon": -122.4383668,
+            "similarity": 0.8968390226364136,
+            "score": 0.8968390226364136,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.8968390226364136
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/Z0h76Bq-r3T3WaHBadiUJQ/h000_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 852727,
+            "panorama_id": 9642,
+            "heading": 30.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/Nm6UYnU4o1nyjM_xQtYr0A/h030_p075_high_v1.jpg",
+            "pano_id": "Nm6UYnU4o1nyjM_xQtYr0A",
+            "lat": 37.7217605,
+            "lon": -122.396991,
+            "similarity": 0.8963458003791706,
+            "score": 0.8963458003791706,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.8963458003791706
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/Nm6UYnU4o1nyjM_xQtYr0A/h030_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 980307,
+            "panorama_id": 5149,
+            "heading": 330.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "enrich",
+            "filepath": "captures/_HNVLjJ1gPOWNaPQkYzVBg/h330_p075_high_v1.jpg",
+            "pano_id": "_HNVLjJ1gPOWNaPQkYzVBg",
+            "lat": 37.7810068,
+            "lon": -122.47517,
+            "similarity": 0.8961623907089233,
+            "score": 0.8961623907089233,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.8961623907089233
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/_HNVLjJ1gPOWNaPQkYzVBg/h330_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 2554442,
+            "panorama_id": 18588,
+            "heading": 165.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/5A27-62Ql52RuLwqIZFtoA/h165_p075_high_v1.jpg",
+            "pano_id": "5A27-62Ql52RuLwqIZFtoA",
+            "lat": 37.746693,
+            "lon": -122.5049836,
+            "similarity": 0.8959586763320481,
+            "score": 0.8959586763320481,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.8959586763320481
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/5A27-62Ql52RuLwqIZFtoA/h165_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 2554322,
+            "panorama_id": 18588,
+            "heading": 165.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/5A27-62Ql52RuLwqIZFtoA/h165_p075_high_v1.jpg",
+            "pano_id": "5A27-62Ql52RuLwqIZFtoA",
+            "lat": 37.746693,
+            "lon": -122.5049836,
+            "similarity": 0.8959586229287383,
+            "score": 0.8959586229287383,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.8959586229287383
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/5A27-62Ql52RuLwqIZFtoA/h165_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 2553962,
+            "panorama_id": 18586,
+            "heading": 165.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/6CRaX7ynPjx6gQefUEvsvw/h165_p075_high_v1.jpg",
+            "pano_id": "6CRaX7ynPjx6gQefUEvsvw",
+            "lat": 37.7466242,
+            "lon": -122.507117,
+            "similarity": 0.8959529933901441,
+            "score": 0.8959529933901441,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.8959529933901441
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/6CRaX7ynPjx6gQefUEvsvw/h165_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 2393294,
+            "panorama_id": 17579,
+            "heading": 345.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/0kjqofgY06P_NIAL8ODiMQ/h345_p075_high_v1.jpg",
+            "pano_id": "0kjqofgY06P_NIAL8ODiMQ",
+            "lat": 37.743112,
+            "lon": -122.4311235,
+            "similarity": 0.895459306781381,
+            "score": 0.895459306781381,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.895459306781381
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/0kjqofgY06P_NIAL8ODiMQ/h345_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 2478374,
+            "panorama_id": 18112,
+            "heading": 345.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/bg32tH6aOHCmjsz_hkFZig/h345_p075_high_v1.jpg",
+            "pano_id": "bg32tH6aOHCmjsz_hkFZig",
+            "lat": 37.7449475,
+            "lon": -122.4379213,
+            "similarity": 0.8952906194156055,
+            "score": 0.8952906194156055,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.8952906194156055
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/bg32tH6aOHCmjsz_hkFZig/h345_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 4349257,
+            "panorama_id": 25325,
+            "heading": 105.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "fill",
+            "filepath": "captures/P9vLQeUYn3LP1CR4RGbWPQ/h105_p075_high_v1.jpg",
+            "pano_id": "P9vLQeUYn3LP1CR4RGbWPQ",
+            "lat": 37.7149014,
+            "lon": -122.4611747,
+            "similarity": 0.89524906873703,
+            "score": 0.89524906873703,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.89524906873703
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/P9vLQeUYn3LP1CR4RGbWPQ/h105_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 3821142,
+            "panorama_id": 25325,
+            "heading": 105.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "fill",
+            "filepath": "captures/P9vLQeUYn3LP1CR4RGbWPQ/h105_p075_high_v1.jpg",
+            "pano_id": "P9vLQeUYn3LP1CR4RGbWPQ",
+            "lat": 37.7149014,
+            "lon": -122.4611747,
+            "similarity": 0.8952488569989464,
+            "score": 0.8952488569989464,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.8952488569989464
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/P9vLQeUYn3LP1CR4RGbWPQ/h105_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 3760182,
+            "panorama_id": 25325,
+            "heading": 105.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "fill",
+            "filepath": "captures/P9vLQeUYn3LP1CR4RGbWPQ/h105_p075_high_v1.jpg",
+            "pano_id": "P9vLQeUYn3LP1CR4RGbWPQ",
+            "lat": 37.7149014,
+            "lon": -122.4611747,
+            "similarity": 0.8952486781850068,
+            "score": 0.8952486781850068,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.8952486781850068
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/P9vLQeUYn3LP1CR4RGbWPQ/h105_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 3060585,
+            "panorama_id": 21672,
+            "heading": 15.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/peTxZ2fIqrA_cb6drrzeWg/h015_p075_high_v1.jpg",
+            "pano_id": "peTxZ2fIqrA_cb6drrzeWg",
+            "lat": 37.7578674,
+            "lon": -122.4810413,
+            "similarity": 0.895192563533783,
+            "score": 0.895192563533783,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.895192563533783
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/peTxZ2fIqrA_cb6drrzeWg/h015_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 2831638,
+            "panorama_id": 20281,
+            "heading": 195.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/NFh6kqTpXjz7TbYqR7_Q7A/h195_p075_high_v1.jpg",
+            "pano_id": "NFh6kqTpXjz7TbYqR7_Q7A",
+            "lat": 37.752978,
+            "lon": -122.4828791,
+            "similarity": 0.89518261580571,
+            "score": 0.89518261580571,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.89518261580571
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/NFh6kqTpXjz7TbYqR7_Q7A/h195_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 2831758,
+            "panorama_id": 20281,
+            "heading": 195.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/NFh6kqTpXjz7TbYqR7_Q7A/h195_p075_high_v1.jpg",
+            "pano_id": "NFh6kqTpXjz7TbYqR7_Q7A",
+            "lat": 37.752978,
+            "lon": -122.4828791,
+            "similarity": 0.8951824369917863,
+            "score": 0.8951824369917863,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.8951824369917863
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/NFh6kqTpXjz7TbYqR7_Q7A/h195_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 1104251,
+            "panorama_id": 10516,
+            "heading": 30.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/fqPjDwouqTc4n4ZEOokCrQ/h030_p075_high_v1.jpg",
+            "pano_id": "pTjiwxEynefVCLdXQ6IQFw",
+            "lat": 37.7254707,
+            "lon": -122.4267045,
+            "similarity": 0.8948922157287598,
+            "score": 0.8948922157287598,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.8948922157287598
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/fqPjDwouqTc4n4ZEOokCrQ/h030_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 3579537,
+            "panorama_id": 24075,
+            "heading": 0.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/_n1eyqHltKU4zzHAS0eMzA/h000_p075_high_v1.jpg",
+            "pano_id": "9iq--zDFbfEx2KhTKAzbcA",
+            "lat": 37.7625908,
+            "lon": -122.48352,
+            "similarity": 0.8948311335049772,
+            "score": 0.8948311335049772,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.8948311335049772
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/_n1eyqHltKU4zzHAS0eMzA/h000_p075_high_v1.jpg"
+          }
+        ],
+        "timings_ms": {
+          "model_compute_total": 13598.37,
+          "model_timings": {
+            "ViT-B-32:open_clip": {
+              "encode": 6847.72,
+              "search": 6750.47,
+              "total": 13598.37
+            }
+          },
+          "total": 13632.91
+        }
+      }
+    },
+    "locate": {
+      "status_code": 200,
+      "json": {
+        "retrieval_id": "f13c8a0699cd",
+        "mode": "locate",
+        "model_name": "ViT-B-32",
+        "model_version": "open_clip",
+        "models": [
+          {
+            "model_id": "clip",
+            "model_name": "ViT-B-32",
+            "model_version": "open_clip",
+            "embedding_base": "clip",
+            "weight": 1.0
+          },
+          {
+            "model_id": "place",
+            "model_name": "ViT-B-16",
+            "model_version": "open_clip_place",
+            "embedding_base": "place",
+            "weight": 1.0
+          }
+        ],
+        "skipped_models": [],
+        "failed_models": [],
+        "capture_candidates": 385,
+        "panorama_candidates": 160,
+        "matches": [
+          {
+            "capture_id": 1227639,
+            "panorama_id": 5548,
+            "heading": 345.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "enrich",
+            "filepath": "captures/lUVo-bhDJ6rhe_owPmk24w/h345_p075_high_v1.jpg",
+            "pano_id": "lUVo-bhDJ6rhe_owPmk24w",
+            "lat": 37.7823365,
+            "lon": -122.4501723,
+            "similarity": 1.0,
+            "score": 2.0,
+            "model_hits": [
+              "clip",
+              "place"
+            ],
+            "model_scores": {
+              "clip": 1.0,
+              "place": 1.0
+            },
+            "embedding_bases": [
+              "clip",
+              "place"
+            ],
+            "embedding_base": "place",
+            "web_path": "/captures/lUVo-bhDJ6rhe_owPmk24w/h345_p075_high_v1.jpg",
+            "panorama_score": 9.750328,
+            "capture_hits": 7,
+            "heading_support": 3,
+            "pitch_support": 2,
+            "model_support": 2,
+            "top_capture_scores": [
+              2.0,
+              1.880438,
+              1.878101,
+              1.828395,
+              1.828395
+            ],
+            "family_id": "family-1",
+            "family_score": 10.020328,
+            "family_center_lat": 37.7823365,
+            "family_center_lon": -122.4501723,
+            "family_radius_meters": 35.0,
+            "family_panorama_count": 1,
+            "family_capture_hits": 7,
+            "family_model_support": 2,
+            "family_panorama_ids": [
+              5548
+            ]
+          },
+          {
+            "capture_id": 612855,
+            "panorama_id": 3175,
+            "heading": 0.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "enrich",
+            "filepath": "captures/EI9ajSzR06aGNddkgvZMGA/h000_p075_high_v1.jpg",
+            "pano_id": "EI9ajSzR06aGNddkgvZMGA",
+            "lat": 37.7737774,
+            "lon": -122.4680721,
+            "similarity": 0.9043333203891913,
+            "score": 1.7939097554783028,
+            "model_hits": [
+              "clip",
+              "place"
+            ],
+            "model_scores": {
+              "clip": 0.8895764350891113,
+              "place": 0.9043333203891913
+            },
+            "embedding_bases": [
+              "clip",
+              "place"
+            ],
+            "embedding_base": "place",
+            "web_path": "/captures/EI9ajSzR06aGNddkgvZMGA/h000_p075_high_v1.jpg",
+            "panorama_score": 6.536173,
+            "capture_hits": 4,
+            "heading_support": 2,
+            "pitch_support": 1,
+            "model_support": 2,
+            "top_capture_scores": [
+              1.79391,
+              1.79391,
+              1.79391,
+              0.890924
+            ],
+            "family_id": "family-2",
+            "family_score": 6.776173,
+            "family_center_lat": 37.7737774,
+            "family_center_lon": -122.4680721,
+            "family_radius_meters": 35.0,
+            "family_panorama_count": 1,
+            "family_capture_hits": 4,
+            "family_model_support": 2,
+            "family_panorama_ids": [
+              3175
+            ]
+          },
+          {
+            "capture_id": 549874,
+            "panorama_id": 2878,
+            "heading": 210.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "enrich",
+            "filepath": "captures/FD6MhxtY8mhn9dSlNdzDyA/h210_p075_high_v1.jpg",
+            "pano_id": "FD6MhxtY8mhn9dSlNdzDyA",
+            "lat": 37.772888,
+            "lon": -122.5024905,
+            "similarity": 0.9034095348959884,
+            "score": 0.9034095348959884,
+            "model_hits": [
+              "place"
+            ],
+            "model_scores": {
+              "place": 0.9034095348959884
+            },
+            "embedding_bases": [
+              "place"
+            ],
+            "embedding_base": "place",
+            "web_path": "/captures/FD6MhxtY8mhn9dSlNdzDyA/h210_p075_high_v1.jpg",
+            "panorama_score": 4.781394,
+            "capture_hits": 5,
+            "heading_support": 3,
+            "pitch_support": 1,
+            "model_support": 2,
+            "top_capture_scores": [
+              0.90341,
+              0.899035,
+              0.893513,
+              0.893513,
+              0.893513
+            ],
+            "family_id": "family-3",
+            "family_score": 5.001394,
+            "family_center_lat": 37.772888,
+            "family_center_lon": -122.5024905,
+            "family_radius_meters": 35.0,
+            "family_panorama_count": 1,
+            "family_capture_hits": 5,
+            "family_model_support": 1,
+            "family_panorama_ids": [
+              2878
+            ]
+          },
+          {
+            "capture_id": 2405654,
+            "panorama_id": 17654,
+            "heading": 345.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/2ybL8I5Pz14QFANmM4KSSA/h345_p075_high_v1.jpg",
+            "pano_id": "2ybL8I5Pz14QFANmM4KSSA",
+            "lat": 37.7435497,
+            "lon": -122.4865133,
+            "similarity": 0.903907975903867,
+            "score": 0.903907975903867,
+            "model_hits": [
+              "place"
+            ],
+            "model_scores": {
+              "place": 0.903907975903867
+            },
+            "embedding_bases": [
+              "place"
+            ],
+            "embedding_base": "place",
+            "web_path": "/captures/2ybL8I5Pz14QFANmM4KSSA/h345_p075_high_v1.jpg",
+            "panorama_score": 3.870458,
+            "capture_hits": 4,
+            "heading_support": 2,
+            "pitch_support": 2,
+            "model_support": 1,
+            "top_capture_scores": [
+              0.903908,
+              0.903908,
+              0.902087,
+              0.902087
+            ],
+            "family_id": "family-4",
+            "family_score": 4.060458,
+            "family_center_lat": 37.7435497,
+            "family_center_lon": -122.4865133,
+            "family_radius_meters": 35.0,
+            "family_panorama_count": 1,
+            "family_capture_hits": 4,
+            "family_model_support": 1,
+            "family_panorama_ids": [
+              17654
+            ]
+          },
+          {
+            "capture_id": 16591,
+            "panorama_id": 3682,
+            "heading": 180.0,
+            "pitch": 75.0,
+            "capture_profile": "base",
+            "capture_kind": "scan",
+            "filepath": "captures/YaEm4gQVqABrqNCCNSTQ8Q/h180.jpg",
+            "pano_id": "YaEm4gQVqABrqNCCNSTQ8Q",
+            "lat": 37.7756156,
+            "lon": -122.4703821,
+            "similarity": 0.9101990190089078,
+            "score": 0.9101990190089078,
+            "model_hits": [
+              "place"
+            ],
+            "model_scores": {
+              "place": 0.9101990190089078
+            },
+            "embedding_bases": [
+              "place"
+            ],
+            "embedding_base": "place",
+            "web_path": "/captures/YaEm4gQVqABrqNCCNSTQ8Q/h180.jpg",
+            "panorama_score": 3.86271,
+            "capture_hits": 4,
+            "heading_support": 2,
+            "pitch_support": 1,
+            "model_support": 1,
+            "top_capture_scores": [
+              0.910199,
+              0.910199,
+              0.910199,
+              0.897889
+            ],
+            "family_id": "family-5",
+            "family_score": 4.05271,
+            "family_center_lat": 37.7756156,
+            "family_center_lon": -122.4703821,
+            "family_radius_meters": 35.0,
+            "family_panorama_count": 1,
+            "family_capture_hits": 4,
+            "family_model_support": 1,
+            "family_panorama_ids": [
+              3682
+            ]
+          },
+          {
+            "capture_id": 4335453,
+            "panorama_id": 27317,
+            "heading": 45.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "fill",
+            "filepath": "captures/gO0S2sKctpZo7HZvKPLFEw/h045_p075_high_v1.jpg",
+            "pano_id": "mu5tGj0r9LTUMoPQexingw",
+            "lat": 37.7097464,
+            "lon": -122.452546,
+            "similarity": 0.9048981879560556,
+            "score": 0.9048981879560556,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.9048981879560556
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/gO0S2sKctpZo7HZvKPLFEw/h045_p075_high_v1.jpg",
+            "panorama_score": 3.842904,
+            "capture_hits": 4,
+            "heading_support": 2,
+            "pitch_support": 1,
+            "model_support": 1,
+            "top_capture_scores": [
+              0.904898,
+              0.904898,
+              0.89976,
+              0.89976
+            ],
+            "family_id": "family-6",
+            "family_score": 4.032904,
+            "family_center_lat": 37.7097464,
+            "family_center_lon": -122.452546,
+            "family_radius_meters": 35.0,
+            "family_panorama_count": 1,
+            "family_capture_hits": 4,
+            "family_model_support": 1,
+            "family_panorama_ids": [
+              27317
+            ]
+          },
+          {
+            "capture_id": 909256,
+            "panorama_id": 4781,
+            "heading": 165.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "enrich",
+            "filepath": "captures/5wG0flC8s-k3dTV2FIVpTw/h165_p075_high_v1.jpg",
+            "pano_id": "5wG0flC8s-k3dTV2FIVpTw",
+            "lat": 37.7796192,
+            "lon": -122.4685162,
+            "similarity": 0.9026264490262538,
+            "score": 0.9026264490262538,
+            "model_hits": [
+              "place"
+            ],
+            "model_scores": {
+              "place": 0.9026264490262538
+            },
+            "embedding_bases": [
+              "place"
+            ],
+            "embedding_base": "place",
+            "web_path": "/captures/5wG0flC8s-k3dTV2FIVpTw/h165_p075_high_v1.jpg",
+            "panorama_score": 3.841355,
+            "capture_hits": 4,
+            "heading_support": 2,
+            "pitch_support": 1,
+            "model_support": 1,
+            "top_capture_scores": [
+              0.902626,
+              0.901805,
+              0.901805,
+              0.901805
+            ],
+            "family_id": "family-7",
+            "family_score": 4.031355,
+            "family_center_lat": 37.7796192,
+            "family_center_lon": -122.4685162,
+            "family_radius_meters": 35.0,
+            "family_panorama_count": 1,
+            "family_capture_hits": 4,
+            "family_model_support": 1,
+            "family_panorama_ids": [
+              4781
+            ]
+          },
+          {
+            "capture_id": 26833,
+            "panorama_id": 5655,
+            "heading": 0.0,
+            "pitch": 75.0,
+            "capture_profile": "base",
+            "capture_kind": "scan",
+            "filepath": "captures/9GsIad6xdAnZjaU2IYdpWA/h000.jpg",
+            "pano_id": "9GsIad6xdAnZjaU2IYdpWA",
+            "lat": 37.7828109,
+            "lon": -122.4523667,
+            "similarity": 0.9027773468858831,
+            "score": 0.9027773468858831,
+            "model_hits": [
+              "place"
+            ],
+            "model_scores": {
+              "place": 0.9027773468858831
+            },
+            "embedding_bases": [
+              "place"
+            ],
+            "embedding_base": "place",
+            "web_path": "/captures/9GsIad6xdAnZjaU2IYdpWA/h000.jpg",
+            "panorama_score": 3.84133,
+            "capture_hits": 4,
+            "heading_support": 2,
+            "pitch_support": 1,
+            "model_support": 1,
+            "top_capture_scores": [
+              0.902777,
+              0.902777,
+              0.902777,
+              0.899664
+            ],
+            "family_id": "family-8",
+            "family_score": 4.03133,
+            "family_center_lat": 37.7828109,
+            "family_center_lon": -122.4523667,
+            "family_radius_meters": 35.0,
+            "family_panorama_count": 1,
+            "family_capture_hits": 4,
+            "family_model_support": 1,
+            "family_panorama_ids": [
+              5655
+            ]
+          },
+          {
+            "capture_id": 3633366,
+            "panorama_id": 24127,
+            "heading": 345.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/p-cR949Sw5YqI9YMo1chgg/h345_p075_high_v1.jpg",
+            "pano_id": "KG88hr1NZ3rapxVToqKeIw",
+            "lat": 37.762652,
+            "lon": -122.4727487,
+            "similarity": 0.9079743353136118,
+            "score": 1.7961827379224418,
+            "model_hits": [
+              "clip",
+              "place"
+            ],
+            "model_scores": {
+              "clip": 0.8882084026088298,
+              "place": 0.9079743353136118
+            },
+            "embedding_bases": [
+              "clip",
+              "place"
+            ],
+            "embedding_base": "place",
+            "web_path": "/captures/p-cR949Sw5YqI9YMo1chgg/h345_p075_high_v1.jpg",
+            "panorama_score": 3.821322,
+            "capture_hits": 2,
+            "heading_support": 1,
+            "pitch_support": 1,
+            "model_support": 2,
+            "top_capture_scores": [
+              1.796183,
+              1.796182
+            ],
+            "family_id": "family-9",
+            "family_score": 4.031322,
+            "family_center_lat": 37.762652,
+            "family_center_lon": -122.4727487,
+            "family_radius_meters": 35.0,
+            "family_panorama_count": 1,
+            "family_capture_hits": 2,
+            "family_model_support": 2,
+            "family_panorama_ids": [
+              24127
+            ]
+          },
+          {
+            "capture_id": 2554442,
+            "panorama_id": 18588,
+            "heading": 165.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/5A27-62Ql52RuLwqIZFtoA/h165_p075_high_v1.jpg",
+            "pano_id": "5A27-62Ql52RuLwqIZFtoA",
+            "lat": 37.746693,
+            "lon": -122.5049836,
+            "similarity": 0.8959586763320481,
+            "score": 0.8959586763320481,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.8959586763320481
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/5A27-62Ql52RuLwqIZFtoA/h165_p075_high_v1.jpg",
+            "panorama_score": 3.811151,
+            "capture_hits": 4,
+            "heading_support": 2,
+            "pitch_support": 1,
+            "model_support": 1,
+            "top_capture_scores": [
+              0.895959,
+              0.895959,
+              0.893359,
+              0.893359
+            ],
+            "family_id": "family-10",
+            "family_score": 4.001151,
+            "family_center_lat": 37.746693,
+            "family_center_lon": -122.5049836,
+            "family_radius_meters": 35.0,
+            "family_panorama_count": 1,
+            "family_capture_hits": 4,
+            "family_model_support": 1,
+            "family_panorama_ids": [
+              18588
+            ]
+          },
+          {
+            "capture_id": 2206075,
+            "panorama_id": 16399,
+            "heading": 15.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/w74QZpkMbUfpsttN7Bde6Q/h015_p075_high_v1.jpg",
+            "pano_id": "w74QZpkMbUfpsttN7Bde6Q",
+            "lat": 37.7395064,
+            "lon": -122.4851283,
+            "similarity": 0.8923640517104884,
+            "score": 0.8923640517104884,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.8923640517104884
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/w74QZpkMbUfpsttN7Bde6Q/h015_p075_high_v1.jpg",
+            "panorama_score": 3.794287,
+            "capture_hits": 4,
+            "heading_support": 2,
+            "pitch_support": 1,
+            "model_support": 1,
+            "top_capture_scores": [
+              0.892364,
+              0.892364,
+              0.888738,
+              0.888738
+            ],
+            "family_id": "family-11",
+            "family_score": 3.984287,
+            "family_center_lat": 37.7395064,
+            "family_center_lon": -122.4851283,
+            "family_radius_meters": 35.0,
+            "family_panorama_count": 1,
+            "family_capture_hits": 4,
+            "family_model_support": 1,
+            "family_panorama_ids": [
+              16399
+            ]
+          },
+          {
+            "capture_id": 2459876,
+            "panorama_id": 17992,
+            "heading": 75.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/FWhb4yj9U5bMH66Rq0EicQ/h075_p075_high_v1.jpg",
+            "pano_id": "FWhb4yj9U5bMH66Rq0EicQ",
+            "lat": 37.7442194,
+            "lon": -122.4122035,
+            "similarity": 0.9030358464430529,
+            "score": 0.9030358464430529,
+            "model_hits": [
+              "place"
+            ],
+            "model_scores": {
+              "place": 0.9030358464430529
+            },
+            "embedding_bases": [
+              "place"
+            ],
+            "embedding_base": "place",
+            "web_path": "/captures/FWhb4yj9U5bMH66Rq0EicQ/h075_p075_high_v1.jpg",
+            "panorama_score": 2.99144,
+            "capture_hits": 3,
+            "heading_support": 3,
+            "pitch_support": 1,
+            "model_support": 2,
+            "top_capture_scores": [
+              0.903036,
+              0.901911,
+              0.888129
+            ],
+            "family_id": "family-12",
+            "family_score": 3.21144,
+            "family_center_lat": 37.7442194,
+            "family_center_lon": -122.4122035,
+            "family_radius_meters": 35.0,
+            "family_panorama_count": 1,
+            "family_capture_hits": 3,
+            "family_model_support": 1,
+            "family_panorama_ids": [
+              17992
+            ]
+          },
+          {
+            "capture_id": 3893892,
+            "panorama_id": 25984,
+            "heading": 315.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/1Lb8rlhWEyZZ1IKs_dU-8A/h315_p075_high_v1.jpg",
+            "pano_id": "1Lb8rlhWEyZZ1IKs_dU-8A",
+            "lat": 37.7655958,
+            "lon": -122.4477393,
+            "similarity": 0.906532753292652,
+            "score": 0.906532753292652,
+            "model_hits": [
+              "place"
+            ],
+            "model_scores": {
+              "place": 0.906532753292652
+            },
+            "embedding_bases": [
+              "place"
+            ],
+            "embedding_base": "place",
+            "web_path": "/captures/1Lb8rlhWEyZZ1IKs_dU-8A/h315_p075_high_v1.jpg",
+            "panorama_score": 2.977036,
+            "capture_hits": 3,
+            "heading_support": 3,
+            "pitch_support": 1,
+            "model_support": 1,
+            "top_capture_scores": [
+              0.906533,
+              0.901604,
+              0.900115
+            ],
+            "family_id": "family-13",
+            "family_score": 3.197036,
+            "family_center_lat": 37.7655958,
+            "family_center_lon": -122.4477393,
+            "family_radius_meters": 35.0,
+            "family_panorama_count": 1,
+            "family_capture_hits": 3,
+            "family_model_support": 1,
+            "family_panorama_ids": [
+              25984
+            ]
+          },
+          {
+            "capture_id": 3189595,
+            "panorama_id": 22426,
+            "heading": 165.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/wfNaoPxctCvtF0SUcT5pXg/h165_p075_high_v1.jpg",
+            "pano_id": "wfNaoPxctCvtF0SUcT5pXg",
+            "lat": 37.760108,
+            "lon": -122.5048326,
+            "similarity": 0.903451973405598,
+            "score": 1.7910873169355002,
+            "model_hits": [
+              "clip",
+              "place"
+            ],
+            "model_scores": {
+              "clip": 0.8876353435299021,
+              "place": 0.903451973405598
+            },
+            "embedding_bases": [
+              "clip",
+              "place"
+            ],
+            "embedding_base": "place",
+            "web_path": "/captures/wfNaoPxctCvtF0SUcT5pXg/h165_p075_high_v1.jpg",
+            "panorama_score": 2.952161,
+            "capture_hits": 2,
+            "heading_support": 2,
+            "pitch_support": 1,
+            "model_support": 2,
+            "top_capture_scores": [
+              1.791087,
+              0.897659
+            ],
+            "family_id": "family-14",
+            "family_score": 3.192161,
+            "family_center_lat": 37.760108,
+            "family_center_lon": -122.5048326,
+            "family_radius_meters": 35.0,
+            "family_panorama_count": 1,
+            "family_capture_hits": 2,
+            "family_model_support": 2,
+            "family_panorama_ids": [
+              22426
+            ]
+          },
+          {
+            "capture_id": 185674,
+            "panorama_id": 1529,
+            "heading": 150.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "enrich",
+            "filepath": "captures/MIJjN7Y0ibkw0460HZ8nXg/h150_p075_high_v1.jpg",
+            "pano_id": "MIJjN7Y0ibkw0460HZ8nXg",
+            "lat": 37.7639633,
+            "lon": -122.4793116,
+            "similarity": 0.898616889242818,
+            "score": 0.898616889242818,
+            "model_hits": [
+              "place"
+            ],
+            "model_scores": {
+              "place": 0.898616889242818
+            },
+            "embedding_bases": [
+              "place"
+            ],
+            "embedding_base": "place",
+            "web_path": "/captures/MIJjN7Y0ibkw0460HZ8nXg/h150_p075_high_v1.jpg",
+            "panorama_score": 2.947175,
+            "capture_hits": 3,
+            "heading_support": 2,
+            "pitch_support": 1,
+            "model_support": 2,
+            "top_capture_scores": [
+              0.898617,
+              0.892862,
+              0.892862
+            ],
+            "family_id": "family-15",
+            "family_score": 3.137175,
+            "family_center_lat": 37.7639633,
+            "family_center_lon": -122.4793116,
+            "family_radius_meters": 35.0,
+            "family_panorama_count": 1,
+            "family_capture_hits": 3,
+            "family_model_support": 1,
+            "family_panorama_ids": [
+              1529
+            ]
+          },
+          {
+            "capture_id": 3483103,
+            "panorama_id": 23934,
+            "heading": 75.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "fill",
+            "filepath": "captures/p6DcNfPmEf2KqUxvEhkhjA/h075_p075_high_v1.jpg",
+            "pano_id": "p6DcNfPmEf2KqUxvEhkhjA",
+            "lat": 37.710823,
+            "lon": -122.4468572,
+            "similarity": 0.9021019012362336,
+            "score": 1.789338019552884,
+            "model_hits": [
+              "clip",
+              "place"
+            ],
+            "model_scores": {
+              "clip": 0.8872361183166504,
+              "place": 0.9021019012362336
+            },
+            "embedding_bases": [
+              "clip",
+              "place"
+            ],
+            "embedding_base": "place",
+            "web_path": "/captures/p6DcNfPmEf2KqUxvEhkhjA/h075_p075_high_v1.jpg",
+            "panorama_score": 2.926108,
+            "capture_hits": 2,
+            "heading_support": 1,
+            "pitch_support": 1,
+            "model_support": 2,
+            "top_capture_scores": [
+              1.789338,
+              0.907831
+            ],
+            "family_id": "family-19",
+            "family_score": 3.136108,
+            "family_center_lat": 37.710823,
+            "family_center_lon": -122.4468572,
+            "family_radius_meters": 35.0,
+            "family_panorama_count": 1,
+            "family_capture_hits": 2,
+            "family_model_support": 2,
+            "family_panorama_ids": [
+              23934
+            ]
+          },
+          {
+            "capture_id": 272400,
+            "panorama_id": 1571,
+            "heading": 30.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "enrich",
+            "filepath": "captures/Wq2BSytCUBW9nlkIYsRfsQ/h030_p075_high_v1.jpg",
+            "pano_id": "Wq2BSytCUBW9nlkIYsRfsQ",
+            "lat": 37.7643098,
+            "lon": -122.4825953,
+            "similarity": 0.9120650510846128,
+            "score": 0.9120650510846128,
+            "model_hits": [
+              "place"
+            ],
+            "model_scores": {
+              "place": 0.9120650510846128
+            },
+            "embedding_bases": [
+              "place"
+            ],
+            "embedding_base": "place",
+            "web_path": "/captures/Wq2BSytCUBW9nlkIYsRfsQ/h030_p075_high_v1.jpg",
+            "panorama_score": 2.941204,
+            "capture_hits": 3,
+            "heading_support": 2,
+            "pitch_support": 1,
+            "model_support": 1,
+            "top_capture_scores": [
+              0.912065,
+              0.897346,
+              0.897346
+            ],
+            "family_id": "family-16",
+            "family_score": 3.131204,
+            "family_center_lat": 37.7643098,
+            "family_center_lon": -122.4825953,
+            "family_radius_meters": 35.0,
+            "family_panorama_count": 1,
+            "family_capture_hits": 3,
+            "family_model_support": 1,
+            "family_panorama_ids": [
+              1571
+            ]
+          },
+          {
+            "capture_id": 88045,
+            "panorama_id": 994,
+            "heading": 255.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "enrich",
+            "filepath": "captures/gscaNuP_OBg7o5FueaqPzw/h255_p075_high_v1.jpg",
+            "pano_id": "gscaNuP_OBg7o5FueaqPzw",
+            "lat": 37.7990385,
+            "lon": -122.4276729,
+            "similarity": 0.9039249689556653,
+            "score": 0.9039249689556653,
+            "model_hits": [
+              "place"
+            ],
+            "model_scores": {
+              "place": 0.9039249689556653
+            },
+            "embedding_bases": [
+              "place"
+            ],
+            "embedding_base": "place",
+            "web_path": "/captures/gscaNuP_OBg7o5FueaqPzw/h255_p075_high_v1.jpg",
+            "panorama_score": 2.939987,
+            "capture_hits": 3,
+            "heading_support": 2,
+            "pitch_support": 1,
+            "model_support": 1,
+            "top_capture_scores": [
+              0.903925,
+              0.901295,
+              0.901295
+            ],
+            "family_id": "family-17",
+            "family_score": 3.129987,
+            "family_center_lat": 37.7990385,
+            "family_center_lon": -122.4276729,
+            "family_radius_meters": 35.0,
+            "family_panorama_count": 1,
+            "family_capture_hits": 3,
+            "family_model_support": 1,
+            "family_panorama_ids": [
+              994
+            ]
+          },
+          {
+            "capture_id": 15299,
+            "panorama_id": 3433,
+            "heading": 180.0,
+            "pitch": 75.0,
+            "capture_profile": "base",
+            "capture_kind": "scan",
+            "filepath": "captures/wDDcrQ4B0EtQmaAwlBujrw/h180.jpg",
+            "pano_id": "wDDcrQ4B0EtQmaAwlBujrw",
+            "lat": 37.7746696,
+            "lon": -122.4703183,
+            "similarity": 0.9099449461665717,
+            "score": 0.9099449461665717,
+            "model_hits": [
+              "place"
+            ],
+            "model_scores": {
+              "place": 0.9099449461665717
+            },
+            "embedding_bases": [
+              "place"
+            ],
+            "embedding_base": "place",
+            "web_path": "/captures/wDDcrQ4B0EtQmaAwlBujrw/h180.jpg",
+            "panorama_score": 2.92896,
+            "capture_hits": 3,
+            "heading_support": 1,
+            "pitch_support": 1,
+            "model_support": 1,
+            "top_capture_scores": [
+              0.909945,
+              0.909945,
+              0.909877
+            ],
+            "family_id": "family-18",
+            "family_score": 3.08896,
+            "family_center_lat": 37.7746696,
+            "family_center_lon": -122.4703183,
+            "family_radius_meters": 35.0,
+            "family_panorama_count": 1,
+            "family_capture_hits": 3,
+            "family_model_support": 1,
+            "family_panorama_ids": [
+              3433
+            ]
+          },
+          {
+            "capture_id": 2228274,
+            "panorama_id": 16547,
+            "heading": 0.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/6kXohukZJplG7fbY0kiBSw/h000_p075_high_v1.jpg",
+            "pano_id": "6kXohukZJplG7fbY0kiBSw",
+            "lat": 37.7399644,
+            "lon": -122.4851579,
+            "similarity": 0.8981839090044476,
+            "score": 0.8981839090044476,
+            "model_hits": [
+              "place"
+            ],
+            "model_scores": {
+              "place": 0.8981839090044476
+            },
+            "embedding_bases": [
+              "place"
+            ],
+            "embedding_base": "place",
+            "web_path": "/captures/6kXohukZJplG7fbY0kiBSw/h000_p075_high_v1.jpg",
+            "panorama_score": 2.912149,
+            "capture_hits": 3,
+            "heading_support": 1,
+            "pitch_support": 1,
+            "model_support": 2,
+            "top_capture_scores": [
+              0.898184,
+              0.898184,
+              0.887999
+            ],
+            "family_id": "family-20",
+            "family_score": 3.072149,
+            "family_center_lat": 37.7399644,
+            "family_center_lon": -122.4851579,
+            "family_radius_meters": 35.0,
+            "family_panorama_count": 1,
+            "family_capture_hits": 3,
+            "family_model_support": 1,
+            "family_panorama_ids": [
+              16547
+            ]
+          }
+        ],
+        "pipeline": {
+          "stages": [
+            {
+              "key": "vector_search",
+              "title": "Vector search",
+              "status": "completed",
+              "detail": "Searched 2 active models across 2 embedding families.",
+              "timings_ms": {
+                "stage": 18436.84,
+                "models": {
+                  "ViT-B-32:open_clip": {
+                    "encode": 25.97,
+                    "search": 6645.78,
+                    "total": 6671.95
+                  },
+                  "ViT-B-16:open_clip_place": {
+                    "encode": 2325.56,
+                    "search": 9330.44,
+                    "total": 11656.18
+                  }
+                }
+              }
+            },
+            {
+              "key": "panorama_rerank",
+              "title": "Panorama aggregation",
+              "status": "completed",
+              "detail": "Collapsed 385 capture hits into 160 panorama candidates.",
+              "timings_ms": {
+                "stage": 1.84
+              }
+            },
+            {
+              "key": "family_rank",
+              "title": "Panorama-family ranking",
+              "status": "completed",
+              "detail": "Clustered panoramas within 35m into 20 location families.",
+              "timings_ms": {
+                "stage": 12.35
+              }
+            }
+          ]
+        },
+        "timings_ms": {
+          "vector_search": 18436.84,
+          "panorama_rerank": 1.84,
+          "family_rank": 12.35,
+          "model_timings": {
+            "ViT-B-32:open_clip": {
+              "encode": 25.97,
+              "search": 6645.78,
+              "total": 6671.95
+            },
+            "ViT-B-16:open_clip_place": {
+              "encode": 2325.56,
+              "search": 9330.44,
+              "total": 11656.18
+            }
+          },
+          "total": 18473.78
+        }
+      }
+    }
+  },
+  "crop": {
+    "search": {
+      "status_code": 200,
+      "json": {
+        "retrieval_id": "7addded30433",
+        "embedding_base": "clip",
+        "model_name": "ViT-B-32",
+        "model_version": "open_clip",
+        "models": [
+          {
+            "model_id": "clip",
+            "model_name": "ViT-B-32",
+            "model_version": "open_clip",
+            "embedding_base": "clip",
+            "weight": 1.0
+          }
+        ],
+        "skipped_models": [],
+        "failed_models": [],
+        "matches": [
+          {
+            "capture_id": 2619341,
+            "panorama_id": 18965,
+            "heading": 210.0,
+            "pitch": 60.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/ciAFmZ4Sfk3g95ais1QMgg/h210_p060_high_v1.jpg",
+            "pano_id": "ciAFmZ4Sfk3g95ais1QMgg",
+            "lat": 37.7480074,
+            "lon": -122.4846753,
+            "similarity": 0.795265197048366,
+            "score": 0.795265197048366,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.795265197048366
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/ciAFmZ4Sfk3g95ais1QMgg/h210_p060_high_v1.jpg"
+          },
+          {
+            "capture_id": 2619221,
+            "panorama_id": 18965,
+            "heading": 210.0,
+            "pitch": 60.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/ciAFmZ4Sfk3g95ais1QMgg/h210_p060_high_v1.jpg",
+            "pano_id": "ciAFmZ4Sfk3g95ais1QMgg",
+            "lat": 37.7480074,
+            "lon": -122.4846753,
+            "similarity": 0.795265197048366,
+            "score": 0.795265197048366,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.795265197048366
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/ciAFmZ4Sfk3g95ais1QMgg/h210_p060_high_v1.jpg"
+          },
+          {
+            "capture_id": 4018751,
+            "panorama_id": 9308,
+            "heading": 15.0,
+            "pitch": 60.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "fill",
+            "filepath": "captures/7863roql0d8WTpv3IGyPmg/h015_p060_high_v1.jpg",
+            "pano_id": "ufpv6GZl1NXniurodr-G2Q",
+            "lat": 37.720472,
+            "lon": -122.4082961,
+            "similarity": 0.7937594406318011,
+            "score": 0.7937594406318011,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.7937594406318011
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/7863roql0d8WTpv3IGyPmg/h015_p060_high_v1.jpg"
+          },
+          {
+            "capture_id": 481200,
+            "panorama_id": 2487,
+            "heading": 45.0,
+            "pitch": 60.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "enrich",
+            "filepath": "captures/OBUfHSLO4muKI5EXGObPqw/h045_p060_high_v1.jpg",
+            "pano_id": "OBUfHSLO4muKI5EXGObPqw",
+            "lat": 37.7711126,
+            "lon": -122.4472024,
+            "similarity": 0.7934451216559253,
+            "score": 0.7934451216559253,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.7934451216559253
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/OBUfHSLO4muKI5EXGObPqw/h045_p060_high_v1.jpg"
+          },
+          {
+            "capture_id": 3771790,
+            "panorama_id": 25387,
+            "heading": 30.0,
+            "pitch": 60.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/cTfbM-ciqlH9TnKbEZQVUw/h030_p060_high_v1.jpg",
+            "pano_id": "7sNp-AxfYHNOESlx1YYcQA",
+            "lat": 37.7638114,
+            "lon": -122.4534042,
+            "similarity": 0.7890173902229153,
+            "score": 0.7890173902229153,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.7890173902229153
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/cTfbM-ciqlH9TnKbEZQVUw/h030_p060_high_v1.jpg"
+          },
+          {
+            "capture_id": 1131863,
+            "panorama_id": 3935,
+            "heading": 45.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "enrich",
+            "filepath": "captures/GkxLIZzNvsZl2S7tyR_N5A/h045_p075_high_v1.jpg",
+            "pano_id": "GkxLIZzNvsZl2S7tyR_N5A",
+            "lat": 37.7765231,
+            "lon": -122.4704508,
+            "similarity": 0.7886685493985423,
+            "score": 0.7886685493985423,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.7886685493985423
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/GkxLIZzNvsZl2S7tyR_N5A/h045_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 3855387,
+            "panorama_id": 25807,
+            "heading": 300.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/jg-2lbQfvQY_wCAVbAUxVw/h300_p075_high_v1.jpg",
+            "pano_id": "jg-2lbQfvQY_wCAVbAUxVw",
+            "lat": 37.7667121,
+            "lon": -122.4327535,
+            "similarity": 0.7872274156578692,
+            "score": 0.7872274156578692,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.7872274156578692
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/jg-2lbQfvQY_wCAVbAUxVw/h300_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 2915617,
+            "panorama_id": 20803,
+            "heading": 240.0,
+            "pitch": 60.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/0LTelojWeQgtD0ca_eXzhw/h240_p060_high_v1.jpg",
+            "pano_id": "0LTelojWeQgtD0ca_eXzhw",
+            "lat": 37.7546061,
+            "lon": -122.4587852,
+            "similarity": 0.779494712903626,
+            "score": 0.779494712903626,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.779494712903626
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/0LTelojWeQgtD0ca_eXzhw/h240_p060_high_v1.jpg"
+          },
+          {
+            "capture_id": 109595,
+            "panorama_id": 109,
+            "heading": 255.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "enrich",
+            "filepath": "captures/MTV6n0ihw6AYzocws-5o5Q/h255_p075_high_v1.jpg",
+            "pano_id": "MTV6n0ihw6AYzocws-5o5Q",
+            "lat": 37.7076059,
+            "lon": -122.4598875,
+            "similarity": 0.7792445521871376,
+            "score": 0.7792445521871376,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.7792445521871376
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/MTV6n0ihw6AYzocws-5o5Q/h255_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 3369240,
+            "panorama_id": 23318,
+            "heading": 45.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/brWtL2Wg8nFRn2UDNvzihg/h045_p075_high_v1.jpg",
+            "pano_id": "bL3hN2Mvh8EJz49eZ1Zsgw",
+            "lat": 37.7612911,
+            "lon": -122.4383666,
+            "similarity": 0.7784705958015792,
+            "score": 0.7784705958015792,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.7784705958015792
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/brWtL2Wg8nFRn2UDNvzihg/h045_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 2297029,
+            "panorama_id": 16965,
+            "heading": 285.0,
+            "pitch": 60.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/ny28epcRflldJlRTVuualw/h285_p060_high_v1.jpg",
+            "pano_id": "ny28epcRflldJlRTVuualw",
+            "lat": 37.7413006,
+            "lon": -122.4788407,
+            "similarity": 0.7781408760715589,
+            "score": 0.7781408760715589,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.7781408760715589
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/ny28epcRflldJlRTVuualw/h285_p060_high_v1.jpg"
+          },
+          {
+            "capture_id": 268118,
+            "panorama_id": 7608,
+            "heading": 270.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/LgO65HrWzmgp3OGPuW311w/h270_p075_high_v1.jpg",
+            "pano_id": "EV7M_pvbZtGIuaqWw1OH4Q",
+            "lat": 37.7928781,
+            "lon": -122.4138963,
+            "similarity": 0.7772792908286217,
+            "score": 0.7772792908286217,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.7772792908286217
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/LgO65HrWzmgp3OGPuW311w/h270_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 3123951,
+            "panorama_id": 22065,
+            "heading": 105.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/qhPt0DYDKJ92AP2ntB4QiQ/h105_p075_high_v1.jpg",
+            "pano_id": "qhPt0DYDKJ92AP2ntB4QiQ",
+            "lat": 37.7588442,
+            "lon": -122.389362,
+            "similarity": 0.7765615912153248,
+            "score": 0.7765615912153248,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.7765615912153248
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/qhPt0DYDKJ92AP2ntB4QiQ/h105_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 1148054,
+            "panorama_id": 10703,
+            "heading": 30.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/HWdsIQWIVqRA_dEW_cIInw/h030_p075_high_v1.jpg",
+            "pano_id": "HWdsIQWIVqRA_dEW_cIInw",
+            "lat": 37.7259758,
+            "lon": -122.4581801,
+            "similarity": 0.7757713429859767,
+            "score": 0.7757713429859767,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.7757713429859767
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/HWdsIQWIVqRA_dEW_cIInw/h030_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 4189501,
+            "panorama_id": 27165,
+            "heading": 30.0,
+            "pitch": 60.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "fill",
+            "filepath": "captures/PV0ooTxFuRCqcH1FIJp7rg/h030_p060_high_v1.jpg",
+            "pano_id": "c8ea1K9jNNqfrZrnOo9cvQ",
+            "lat": 37.7305675,
+            "lon": -122.4142324,
+            "similarity": 0.7755059697186355,
+            "score": 0.7755059697186355,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.7755059697186355
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/PV0ooTxFuRCqcH1FIJp7rg/h030_p060_high_v1.jpg"
+          },
+          {
+            "capture_id": 3674772,
+            "panorama_id": 24879,
+            "heading": 195.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/NV6GcsoAHG82KcAWb5u6YQ/h195_p075_high_v1.jpg",
+            "pano_id": "NV6GcsoAHG82KcAWb5u6YQ",
+            "lat": 37.7639742,
+            "lon": -122.4482617,
+            "similarity": 0.7746748559080108,
+            "score": 0.7746748559080108,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.7746748559080108
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/NV6GcsoAHG82KcAWb5u6YQ/h195_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 1194625,
+            "panorama_id": 5409,
+            "heading": 225.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "enrich",
+            "filepath": "captures/zmdU4sdsr2VUQr3LqdX5MQ/h225_p075_high_v1.jpg",
+            "pano_id": "zmdU4sdsr2VUQr3LqdX5MQ",
+            "lat": 37.7819245,
+            "lon": -122.46867,
+            "similarity": 0.7740960813250646,
+            "score": 0.7740960813250646,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.7740960813250646
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/zmdU4sdsr2VUQr3LqdX5MQ/h225_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 4295489,
+            "panorama_id": 2698,
+            "heading": 105.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "fill",
+            "filepath": "captures/dYTgspxC0tBmbyXcyo9-Ig/h105_p075_high_v1.jpg",
+            "pano_id": "HldF3nFm7GP4yUjD5Xsk9g",
+            "lat": 37.7720356,
+            "lon": -122.4406408,
+            "similarity": 0.7739795407622372,
+            "score": 0.7739795407622372,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.7739795407622372
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/dYTgspxC0tBmbyXcyo9-Ig/h105_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 4351071,
+            "panorama_id": 3554,
+            "heading": 315.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "fill",
+            "filepath": "captures/4MdA1FqPSdxmxYVz4vJmGQ/h315_p075_high_v1.jpg",
+            "pano_id": "-c5TgbQzF4zPocprtvLnMw",
+            "lat": 37.7751382,
+            "lon": -122.4747113,
+            "similarity": 0.7728641954498537,
+            "score": 0.7728641954498537,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.7728641954498537
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/4MdA1FqPSdxmxYVz4vJmGQ/h315_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 2759285,
+            "panorama_id": 19817,
+            "heading": 225.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/9ktbbo0IgeG5mP40DPYyAw/h225_p075_high_v1.jpg",
+            "pano_id": "9ktbbo0IgeG5mP40DPYyAw",
+            "lat": 37.7512437,
+            "lon": -122.4349313,
+            "similarity": 0.7718264554583868,
+            "score": 0.7718264554583868,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.7718264554583868
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/9ktbbo0IgeG5mP40DPYyAw/h225_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 2619222,
+            "panorama_id": 18965,
+            "heading": 225.0,
+            "pitch": 60.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/ciAFmZ4Sfk3g95ais1QMgg/h225_p060_high_v1.jpg",
+            "pano_id": "ciAFmZ4Sfk3g95ais1QMgg",
+            "lat": 37.7480074,
+            "lon": -122.4846753,
+            "similarity": 0.7713562573619209,
+            "score": 0.7713562573619209,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.7713562573619209
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/ciAFmZ4Sfk3g95ais1QMgg/h225_p060_high_v1.jpg"
+          },
+          {
+            "capture_id": 2619342,
+            "panorama_id": 18965,
+            "heading": 225.0,
+            "pitch": 60.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/ciAFmZ4Sfk3g95ais1QMgg/h225_p060_high_v1.jpg",
+            "pano_id": "ciAFmZ4Sfk3g95ais1QMgg",
+            "lat": 37.7480074,
+            "lon": -122.4846753,
+            "similarity": 0.7713562573619209,
+            "score": 0.7713562573619209,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.7713562573619209
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/ciAFmZ4Sfk3g95ais1QMgg/h225_p060_high_v1.jpg"
+          },
+          {
+            "capture_id": 3896396,
+            "panorama_id": 25497,
+            "heading": 75.0,
+            "pitch": 90.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/mpib-BtpXUHP6MHQvIc_sQ/h075_p090_high_v1.jpg",
+            "pano_id": "D5pm9GCvxFIG661P1SNgkw",
+            "lat": 37.7657179,
+            "lon": -122.4446175,
+            "similarity": 0.7702595547228391,
+            "score": 0.7702595547228391,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.7702595547228391
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/mpib-BtpXUHP6MHQvIc_sQ/h075_p090_high_v1.jpg"
+          },
+          {
+            "capture_id": 553838,
+            "panorama_id": 2911,
+            "heading": 285.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "enrich",
+            "filepath": "captures/8G9LXX2sZJ4QeRaLtXTvcg/h285_p075_high_v1.jpg",
+            "pano_id": "8G9LXX2sZJ4QeRaLtXTvcg",
+            "lat": 37.7732375,
+            "lon": -122.470572,
+            "similarity": 0.7696717014811035,
+            "score": 0.7696717014811035,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.7696717014811035
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/8G9LXX2sZJ4QeRaLtXTvcg/h285_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 142210,
+            "panorama_id": 1289,
+            "heading": 150.0,
+            "pitch": 60.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "enrich",
+            "filepath": "captures/ugfU99VVRjqtnx37GioB6g/h150_p060_high_v1.jpg",
+            "pano_id": "ugfU99VVRjqtnx37GioB6g",
+            "lat": 37.7889243,
+            "lon": -122.4253889,
+            "similarity": 0.7689666701803614,
+            "score": 0.7689666701803614,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.7689666701803614
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/ugfU99VVRjqtnx37GioB6g/h150_p060_high_v1.jpg"
+          },
+          {
+            "capture_id": 771862,
+            "panorama_id": 9382,
+            "heading": 255.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/B19vrPqNJBvBgnzFXD9S4A/h255_p075_high_v1.jpg",
+            "pano_id": "B19vrPqNJBvBgnzFXD9S4A",
+            "lat": 37.7210232,
+            "lon": -122.4442553,
+            "similarity": 0.7682017269495237,
+            "score": 0.7682017269495237,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.7682017269495237
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/B19vrPqNJBvBgnzFXD9S4A/h255_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 3650619,
+            "panorama_id": 24196,
+            "heading": 300.0,
+            "pitch": 60.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/JKdCqCAHpK744HZTjoe7kg/h300_p060_high_v1.jpg",
+            "pano_id": "_X2uU35Emuv0_7F7-W4E3Q",
+            "lat": 37.7626122,
+            "lon": -122.4487003,
+            "similarity": 0.7680557003037926,
+            "score": 0.7680557003037926,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.7680557003037926
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/JKdCqCAHpK744HZTjoe7kg/h300_p060_high_v1.jpg"
+          },
+          {
+            "capture_id": 3936311,
+            "panorama_id": 25800,
+            "heading": 135.0,
+            "pitch": 60.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/5p2IXiKbDJrK7PJTTAu6Vg/h135_p060_high_v1.jpg",
+            "pano_id": "JDNjQX0srANiuEXisMQTfQ",
+            "lat": 37.766576,
+            "lon": -122.4350152,
+            "similarity": 0.7680161228184822,
+            "score": 0.7680161228184822,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.7680161228184822
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/5p2IXiKbDJrK7PJTTAu6Vg/h135_p060_high_v1.jpg"
+          },
+          {
+            "capture_id": 37452,
+            "panorama_id": 704,
+            "heading": 225.0,
+            "pitch": 60.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "enrich",
+            "filepath": "captures/5d0A0kNPF8roXMiMCdiAyg/h225_p060_high_v1.jpg",
+            "pano_id": "5d0A0kNPF8roXMiMCdiAyg",
+            "lat": 37.7965,
+            "lon": -122.4354194,
+            "similarity": 0.7679177751516718,
+            "score": 0.7679177751516718,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.7679177751516718
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/5d0A0kNPF8roXMiMCdiAyg/h225_p060_high_v1.jpg"
+          },
+          {
+            "capture_id": 4272214,
+            "panorama_id": 23279,
+            "heading": 60.0,
+            "pitch": 60.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "fill",
+            "filepath": "captures/bilnkV4iHz4UrIhdot5hAA/h060_p060_high_v1.jpg",
+            "pano_id": "uZb0H_EfebeVgJ88Bilsww",
+            "lat": 37.7088903,
+            "lon": -122.4013769,
+            "similarity": 0.7678110232296976,
+            "score": 0.7678110232296976,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.7678110232296976
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/bilnkV4iHz4UrIhdot5hAA/h060_p060_high_v1.jpg"
+          },
+          {
+            "capture_id": 4331138,
+            "panorama_id": 3293,
+            "heading": 120.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "fill",
+            "filepath": "captures/hN-eHW-9UKarOOThxZOmxw/h120_p075_high_v1.jpg",
+            "pano_id": "5r2g_KcVFB0Ra_qy8T3DmQ",
+            "lat": 37.7743086,
+            "lon": -122.4746911,
+            "similarity": 0.7677420558468203,
+            "score": 0.7677420558468203,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.7677420558468203
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/hN-eHW-9UKarOOThxZOmxw/h120_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 769702,
+            "panorama_id": 9371,
+            "heading": 255.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/k2m9dq50_t7_8VfXHXtbyw/h255_p075_high_v1.jpg",
+            "pano_id": "k2m9dq50_t7_8VfXHXtbyw",
+            "lat": 37.7208935,
+            "lon": -122.4517538,
+            "similarity": 0.7677140007104445,
+            "score": 0.7677140007104445,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.7677140007104445
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/k2m9dq50_t7_8VfXHXtbyw/h255_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 3771791,
+            "panorama_id": 25387,
+            "heading": 45.0,
+            "pitch": 60.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/cTfbM-ciqlH9TnKbEZQVUw/h045_p060_high_v1.jpg",
+            "pano_id": "7sNp-AxfYHNOESlx1YYcQA",
+            "lat": 37.7638114,
+            "lon": -122.4534042,
+            "similarity": 0.7671605577218784,
+            "score": 0.7671605577218784,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.7671605577218784
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/cTfbM-ciqlH9TnKbEZQVUw/h045_p060_high_v1.jpg"
+          },
+          {
+            "capture_id": 2758528,
+            "panorama_id": 19812,
+            "heading": 30.0,
+            "pitch": 60.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/7grLdijxcGljITUmXrxbyw/h030_p060_high_v1.jpg",
+            "pano_id": "7grLdijxcGljITUmXrxbyw",
+            "lat": 37.7509395,
+            "lon": -122.4399647,
+            "similarity": 0.7670485695658422,
+            "score": 0.7670485695658422,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.7670485695658422
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/7grLdijxcGljITUmXrxbyw/h030_p060_high_v1.jpg"
+          },
+          {
+            "capture_id": 2024057,
+            "panorama_id": 15209,
+            "heading": 345.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/siGgaQCAnDNyVGJchXQUCQ/h345_p075_high_v1.jpg",
+            "pano_id": "siGgaQCAnDNyVGJchXQUCQ",
+            "lat": 37.7353542,
+            "lon": -122.4300515,
+            "similarity": 0.7670186251716608,
+            "score": 0.7670186251716608,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.7670186251716608
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/siGgaQCAnDNyVGJchXQUCQ/h345_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 74400,
+            "panorama_id": 1050,
+            "heading": 45.0,
+            "pitch": 60.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "enrich",
+            "filepath": "captures/Unc-9y2QlyNcd9VjT1hh7A/h045_p060_high_v1.jpg",
+            "pano_id": "Unc-9y2QlyNcd9VjT1hh7A",
+            "lat": 37.7890302,
+            "lon": -122.436749,
+            "similarity": 0.7668532222676209,
+            "score": 0.7668532222676209,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.7668532222676209
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/Unc-9y2QlyNcd9VjT1hh7A/h045_p060_high_v1.jpg"
+          },
+          {
+            "capture_id": 2718707,
+            "panorama_id": 19556,
+            "heading": 300.0,
+            "pitch": 60.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/6M4gD1O4se_fkWH-DAPLmg/h300_p060_high_v1.jpg",
+            "pano_id": "6M4gD1O4se_fkWH-DAPLmg",
+            "lat": 37.7503768,
+            "lon": -122.4645081,
+            "similarity": 0.7663269728118486,
+            "score": 0.7663269728118486,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.7663269728118486
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/6M4gD1O4se_fkWH-DAPLmg/h300_p060_high_v1.jpg"
+          },
+          {
+            "capture_id": 1439044,
+            "panorama_id": 6095,
+            "heading": 315.0,
+            "pitch": 60.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "enrich",
+            "filepath": "captures/UGOz67M7-9U5Zgq4mZQgEA/h315_p060_high_v1.jpg",
+            "pano_id": "UGOz67M7-9U5Zgq4mZQgEA",
+            "lat": 37.7849797,
+            "lon": -122.4422143,
+            "similarity": 0.7661254177652341,
+            "score": 0.7661254177652341,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.7661254177652341
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/UGOz67M7-9U5Zgq4mZQgEA/h315_p060_high_v1.jpg"
+          },
+          {
+            "capture_id": 3026387,
+            "panorama_id": 21463,
+            "heading": 45.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/h_LKhMR1AmAWiMzlrLY6BA/h045_p075_high_v1.jpg",
+            "pano_id": "h_LKhMR1AmAWiMzlrLY6BA",
+            "lat": 37.7570001,
+            "lon": -122.4331645,
+            "similarity": 0.766002173126068,
+            "score": 0.766002173126068,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.766002173126068
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/h_LKhMR1AmAWiMzlrLY6BA/h045_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 3629140,
+            "panorama_id": 24334,
+            "heading": 75.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/KN4gn_yXFK9baaXlBXXXUg/h075_p075_high_v1.jpg",
+            "pano_id": "Rj20CjvOu7dfsY16fPMFbg",
+            "lat": 37.7625736,
+            "lon": -122.3935947,
+            "similarity": 0.7653856049363301,
+            "score": 0.7653856049363301,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.7653856049363301
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/KN4gn_yXFK9baaXlBXXXUg/h075_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 3628596,
+            "panorama_id": 24334,
+            "heading": 75.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/KN4gn_yXFK9baaXlBXXXUg/h075_p075_high_v1.jpg",
+            "pano_id": "Rj20CjvOu7dfsY16fPMFbg",
+            "lat": 37.7625736,
+            "lon": -122.3935947,
+            "similarity": 0.7653856049363301,
+            "score": 0.7653856049363301,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.7653856049363301
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/KN4gn_yXFK9baaXlBXXXUg/h075_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 502235,
+            "panorama_id": 2585,
+            "heading": 210.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "enrich",
+            "filepath": "captures/xWQvQ0enw5iGQqo_ZejSdw/h210_p075_high_v1.jpg",
+            "pano_id": "xWQvQ0enw5iGQqo_ZejSdw",
+            "lat": 37.7715738,
+            "lon": -122.4472902,
+            "similarity": 0.7650904147407814,
+            "score": 0.7650904147407814,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.7650904147407814
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/xWQvQ0enw5iGQqo_ZejSdw/h210_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 2856098,
+            "panorama_id": 20433,
+            "heading": 255.0,
+            "pitch": 60.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/_j7nwYMJ-2hhN3Ag_T5SCg/h255_p060_high_v1.jpg",
+            "pano_id": "_j7nwYMJ-2hhN3Ag_T5SCg",
+            "lat": 37.7536036,
+            "lon": -122.4547628,
+            "similarity": 0.7649833963776763,
+            "score": 0.7649833963776763,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.7649833963776763
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/_j7nwYMJ-2hhN3Ag_T5SCg/h255_p060_high_v1.jpg"
+          },
+          {
+            "capture_id": 515283,
+            "panorama_id": 8622,
+            "heading": 90.0,
+            "pitch": 60.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/0a1Hs7iNiJwEKB7jgHKY-A/h090_p060_high_v1.jpg",
+            "pano_id": "8D3TDuJJE_M5vxy1rtk66A",
+            "lat": 37.7177203,
+            "lon": -122.453457,
+            "similarity": 0.7649284548950877,
+            "score": 0.7649284548950877,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.7649284548950877
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/0a1Hs7iNiJwEKB7jgHKY-A/h090_p060_high_v1.jpg"
+          },
+          {
+            "capture_id": 268119,
+            "panorama_id": 7608,
+            "heading": 285.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/LgO65HrWzmgp3OGPuW311w/h285_p075_high_v1.jpg",
+            "pano_id": "EV7M_pvbZtGIuaqWw1OH4Q",
+            "lat": 37.7928781,
+            "lon": -122.4138963,
+            "similarity": 0.764887580116476,
+            "score": 0.764887580116476,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.764887580116476
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/LgO65HrWzmgp3OGPuW311w/h285_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 3338568,
+            "panorama_id": 23176,
+            "heading": 165.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "fill",
+            "filepath": "captures/Wfq1H5UI5c9T-gKsRJh6CQ/h165_p075_high_v1.jpg",
+            "pano_id": "Wfq1H5UI5c9T-gKsRJh6CQ",
+            "lat": 37.7957282,
+            "lon": -122.4463468,
+            "similarity": 0.7648515929237568,
+            "score": 0.7648515929237568,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.7648515929237568
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/Wfq1H5UI5c9T-gKsRJh6CQ/h165_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 2519747,
+            "panorama_id": 18366,
+            "heading": 300.0,
+            "pitch": 60.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/WU7e6XoBmM2ScQj7hosnyg/h300_p060_high_v1.jpg",
+            "pano_id": "WU7e6XoBmM2ScQj7hosnyg",
+            "lat": 37.7458651,
+            "lon": -122.4423703,
+            "similarity": 0.7642421494650367,
+            "score": 0.7642421494650367,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.7642421494650367
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/WU7e6XoBmM2ScQj7hosnyg/h300_p060_high_v1.jpg"
+          },
+          {
+            "capture_id": 76483,
+            "panorama_id": 1068,
+            "heading": 330.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "enrich",
+            "filepath": "captures/z4cM1Rroh4c8hC-ShzZtcw/h330_p075_high_v1.jpg",
+            "pano_id": "z4cM1Rroh4c8hC-ShzZtcw",
+            "lat": 37.7908111,
+            "lon": -122.4334119,
+            "similarity": 0.764108258028315,
+            "score": 0.764108258028315,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.764108258028315
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/z4cM1Rroh4c8hC-ShzZtcw/h330_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 810246,
+            "panorama_id": 4293,
+            "heading": 15.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "enrich",
+            "filepath": "captures/wr_s85GfO5rh4V8VgpNCVA/h015_p075_high_v1.jpg",
+            "pano_id": "wr_s85GfO5rh4V8VgpNCVA",
+            "lat": 37.7778634,
+            "lon": -122.4651412,
+            "similarity": 0.7641028848978507,
+            "score": 0.7641028848978507,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.7641028848978507
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/wr_s85GfO5rh4V8VgpNCVA/h015_p075_high_v1.jpg"
+          },
+          {
+            "capture_id": 3730606,
+            "panorama_id": 25177,
+            "heading": 225.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/_-NB_ElApQ_56q_SRNTJtg/h225_p075_high_v1.jpg",
+            "pano_id": "_-NB_ElApQ_56q_SRNTJtg",
+            "lat": 37.7649921,
+            "lon": -122.4344686,
+            "similarity": 0.7637639587765874,
+            "score": 0.7637639587765874,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.7637639587765874
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/_-NB_ElApQ_56q_SRNTJtg/h225_p075_high_v1.jpg"
+          }
+        ],
+        "timings_ms": {
+          "model_compute_total": 6561.22,
+          "model_timings": {
+            "ViT-B-32:open_clip": {
+              "encode": 24.55,
+              "search": 6536.53,
+              "total": 6561.22
+            }
+          },
+          "total": 6584.02
+        }
+      }
+    },
+    "locate": {
+      "status_code": 200,
+      "json": {
+        "retrieval_id": "44d4bca5b78d",
+        "mode": "locate",
+        "model_name": "ViT-B-32",
+        "model_version": "open_clip",
+        "models": [
+          {
+            "model_id": "clip",
+            "model_name": "ViT-B-32",
+            "model_version": "open_clip",
+            "embedding_base": "clip",
+            "weight": 1.0
+          },
+          {
+            "model_id": "place",
+            "model_name": "ViT-B-16",
+            "model_version": "open_clip_place",
+            "embedding_base": "place",
+            "weight": 1.0
+          }
+        ],
+        "skipped_models": [],
+        "failed_models": [],
+        "capture_candidates": 385,
+        "panorama_candidates": 160,
+        "matches": [
+          {
+            "capture_id": 3771790,
+            "panorama_id": 25387,
+            "heading": 30.0,
+            "pitch": 60.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/cTfbM-ciqlH9TnKbEZQVUw/h030_p060_high_v1.jpg",
+            "pano_id": "7sNp-AxfYHNOESlx1YYcQA",
+            "lat": 37.7638114,
+            "lon": -122.4534042,
+            "similarity": 0.7949257370785332,
+            "score": 1.5839431273014486,
+            "model_hits": [
+              "clip",
+              "place"
+            ],
+            "model_scores": {
+              "clip": 0.7890173902229153,
+              "place": 0.7949257370785332
+            },
+            "embedding_bases": [
+              "clip",
+              "place"
+            ],
+            "embedding_base": "place",
+            "web_path": "/captures/cTfbM-ciqlH9TnKbEZQVUw/h030_p060_high_v1.jpg",
+            "panorama_score": 6.579423,
+            "capture_hits": 5,
+            "heading_support": 4,
+            "pitch_support": 2,
+            "model_support": 2,
+            "top_capture_scores": [
+              1.583943,
+              1.55728,
+              1.556088,
+              0.78462,
+              0.751875
+            ],
+            "family_id": "family-1",
+            "family_score": 6.879423,
+            "family_center_lat": 37.7638114,
+            "family_center_lon": -122.4534042,
+            "family_radius_meters": 35.0,
+            "family_panorama_count": 1,
+            "family_capture_hits": 5,
+            "family_model_support": 2,
+            "family_panorama_ids": [
+              25387
+            ]
+          },
+          {
+            "capture_id": 1771080,
+            "panorama_id": 13482,
+            "heading": 30.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/pPZzVMOvYns77254ue4mVw/h030_p075_high_v1.jpg",
+            "pano_id": "pPZzVMOvYns77254ue4mVw",
+            "lat": 37.7304558,
+            "lon": -122.4511735,
+            "similarity": 0.7797268831241532,
+            "score": 1.539029388316541,
+            "model_hits": [
+              "clip",
+              "place"
+            ],
+            "model_scores": {
+              "clip": 0.7593025051923876,
+              "place": 0.7797268831241532
+            },
+            "embedding_bases": [
+              "clip",
+              "place"
+            ],
+            "embedding_base": "place",
+            "web_path": "/captures/pPZzVMOvYns77254ue4mVw/h030_p075_high_v1.jpg",
+            "panorama_score": 4.845146,
+            "capture_hits": 4,
+            "heading_support": 2,
+            "pitch_support": 1,
+            "model_support": 2,
+            "top_capture_scores": [
+              1.539029,
+              1.539029,
+              0.75926,
+              0.75926
+            ],
+            "family_id": "family-2",
+            "family_score": 5.085146,
+            "family_center_lat": 37.7304558,
+            "family_center_lon": -122.4511735,
+            "family_radius_meters": 35.0,
+            "family_panorama_count": 1,
+            "family_capture_hits": 4,
+            "family_model_support": 2,
+            "family_panorama_ids": [
+              13482
+            ]
+          },
+          {
+            "capture_id": 1706262,
+            "panorama_id": 13134,
+            "heading": 135.0,
+            "pitch": 60.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/CwLSa55BZKFjaG59OM5NPw/h135_p060_high_v1.jpg",
+            "pano_id": "CwLSa55BZKFjaG59OM5NPw",
+            "lat": 37.8064862,
+            "lon": -122.4366215,
+            "similarity": 0.7868059980993869,
+            "score": 0.7868059980993869,
+            "model_hits": [
+              "place"
+            ],
+            "model_scores": {
+              "place": 0.7868059980993869
+            },
+            "embedding_bases": [
+              "place"
+            ],
+            "embedding_base": "place",
+            "web_path": "/captures/CwLSa55BZKFjaG59OM5NPw/h135_p060_high_v1.jpg",
+            "panorama_score": 4.16149,
+            "capture_hits": 6,
+            "heading_support": 2,
+            "pitch_support": 2,
+            "model_support": 1,
+            "top_capture_scores": [
+              0.786806,
+              0.786806,
+              0.781895,
+              0.781895,
+              0.779672
+            ],
+            "family_id": "family-3",
+            "family_score": 4.35149,
+            "family_center_lat": 37.8064862,
+            "family_center_lon": -122.4366215,
+            "family_radius_meters": 35.0,
+            "family_panorama_count": 1,
+            "family_capture_hits": 6,
+            "family_model_support": 1,
+            "family_panorama_ids": [
+              13134
+            ]
+          },
+          {
+            "capture_id": 1040673,
+            "panorama_id": 1993,
+            "heading": 300.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "enrich",
+            "filepath": "captures/wyGwvbjIhRfuPgsaBJLPgQ/h300_p075_high_v1.jpg",
+            "pano_id": "wyGwvbjIhRfuPgsaBJLPgQ",
+            "lat": 37.7679899,
+            "lon": -122.4373914,
+            "similarity": 0.7977547766116522,
+            "score": 0.7977547766116522,
+            "model_hits": [
+              "place"
+            ],
+            "model_scores": {
+              "place": 0.7977547766116522
+            },
+            "embedding_bases": [
+              "place"
+            ],
+            "embedding_base": "place",
+            "web_path": "/captures/wyGwvbjIhRfuPgsaBJLPgQ/h300_p075_high_v1.jpg",
+            "panorama_score": 3.431965,
+            "capture_hits": 4,
+            "heading_support": 3,
+            "pitch_support": 2,
+            "model_support": 2,
+            "top_capture_scores": [
+              0.797755,
+              0.790459,
+              0.779205,
+              0.753816
+            ],
+            "family_id": "family-4",
+            "family_score": 3.651965,
+            "family_center_lat": 37.7679899,
+            "family_center_lon": -122.4373914,
+            "family_radius_meters": 35.0,
+            "family_panorama_count": 1,
+            "family_capture_hits": 4,
+            "family_model_support": 1,
+            "family_panorama_ids": [
+              1993
+            ]
+          },
+          {
+            "capture_id": 810246,
+            "panorama_id": 4293,
+            "heading": 15.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "enrich",
+            "filepath": "captures/wr_s85GfO5rh4V8VgpNCVA/h015_p075_high_v1.jpg",
+            "pano_id": "wr_s85GfO5rh4V8VgpNCVA",
+            "lat": 37.7778634,
+            "lon": -122.4651412,
+            "similarity": 0.7895878663290623,
+            "score": 1.5536907512269131,
+            "model_hits": [
+              "clip",
+              "place"
+            ],
+            "model_scores": {
+              "clip": 0.7641028848978507,
+              "place": 0.7895878663290623
+            },
+            "embedding_bases": [
+              "clip",
+              "place"
+            ],
+            "embedding_base": "place",
+            "web_path": "/captures/wr_s85GfO5rh4V8VgpNCVA/h015_p075_high_v1.jpg",
+            "panorama_score": 3.347837,
+            "capture_hits": 2,
+            "heading_support": 2,
+            "pitch_support": 1,
+            "model_support": 2,
+            "top_capture_scores": [
+              1.553691,
+              1.54414
+            ],
+            "family_id": "family-8",
+            "family_score": 3.587837,
+            "family_center_lat": 37.7778634,
+            "family_center_lon": -122.4651412,
+            "family_radius_meters": 35.0,
+            "family_panorama_count": 1,
+            "family_capture_hits": 2,
+            "family_model_support": 2,
+            "family_panorama_ids": [
+              4293
+            ]
+          },
+          {
+            "capture_id": 2543739,
+            "panorama_id": 18382,
+            "heading": 180.0,
+            "pitch": 60.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/QVN-pc7SlydUQRY2yVABog/h180_p060_high_v1.jpg",
+            "pano_id": "QVN-pc7SlydUQRY2yVABog",
+            "lat": 37.7460619,
+            "lon": -122.4275409,
+            "similarity": 0.7967013241826826,
+            "score": 0.7967013241826826,
+            "model_hits": [
+              "place"
+            ],
+            "model_scores": {
+              "place": 0.7967013241826826
+            },
+            "embedding_bases": [
+              "place"
+            ],
+            "embedding_base": "place",
+            "web_path": "/captures/QVN-pc7SlydUQRY2yVABog/h180_p060_high_v1.jpg",
+            "panorama_score": 3.39213,
+            "capture_hits": 4,
+            "heading_support": 2,
+            "pitch_support": 1,
+            "model_support": 1,
+            "top_capture_scores": [
+              0.796701,
+              0.796701,
+              0.789061,
+              0.789061
+            ],
+            "family_id": "family-5",
+            "family_score": 3.58213,
+            "family_center_lat": 37.7460619,
+            "family_center_lon": -122.4275409,
+            "family_radius_meters": 35.0,
+            "family_panorama_count": 1,
+            "family_capture_hits": 4,
+            "family_model_support": 1,
+            "family_panorama_ids": [
+              18382
+            ]
+          },
+          {
+            "capture_id": 2852160,
+            "panorama_id": 20410,
+            "heading": 225.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/hvrPrRKWL9Dbo3kF_s0V_Q/h225_p075_high_v1.jpg",
+            "pano_id": "hvrPrRKWL9Dbo3kF_s0V_Q",
+            "lat": 37.7533947,
+            "lon": -122.4818002,
+            "similarity": 0.8054963350296078,
+            "score": 1.5682627644628162,
+            "model_hits": [
+              "clip",
+              "place"
+            ],
+            "model_scores": {
+              "clip": 0.7627664294332084,
+              "place": 0.8054963350296078
+            },
+            "embedding_bases": [
+              "clip",
+              "place"
+            ],
+            "embedding_base": "place",
+            "web_path": "/captures/hvrPrRKWL9Dbo3kF_s0V_Q/h225_p075_high_v1.jpg",
+            "panorama_score": 3.353185,
+            "capture_hits": 2,
+            "heading_support": 1,
+            "pitch_support": 1,
+            "model_support": 2,
+            "top_capture_scores": [
+              1.568263,
+              1.568262
+            ],
+            "family_id": "family-7",
+            "family_score": 3.563185,
+            "family_center_lat": 37.7533947,
+            "family_center_lon": -122.4818002,
+            "family_radius_meters": 35.0,
+            "family_panorama_count": 1,
+            "family_capture_hits": 2,
+            "family_model_support": 2,
+            "family_panorama_ids": [
+              20410
+            ]
+          },
+          {
+            "capture_id": 2619221,
+            "panorama_id": 18965,
+            "heading": 210.0,
+            "pitch": 60.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/ciAFmZ4Sfk3g95ais1QMgg/h210_p060_high_v1.jpg",
+            "pano_id": "ciAFmZ4Sfk3g95ais1QMgg",
+            "lat": 37.7480074,
+            "lon": -122.4846753,
+            "similarity": 0.795265197048366,
+            "score": 0.795265197048366,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.795265197048366
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/ciAFmZ4Sfk3g95ais1QMgg/h210_p060_high_v1.jpg",
+            "panorama_score": 3.353675,
+            "capture_hits": 4,
+            "heading_support": 2,
+            "pitch_support": 1,
+            "model_support": 1,
+            "top_capture_scores": [
+              0.795265,
+              0.795265,
+              0.771356,
+              0.771356
+            ],
+            "family_id": "family-6",
+            "family_score": 3.543675,
+            "family_center_lat": 37.7480074,
+            "family_center_lon": -122.4846753,
+            "family_radius_meters": 35.0,
+            "family_panorama_count": 1,
+            "family_capture_hits": 4,
+            "family_model_support": 1,
+            "family_panorama_ids": [
+              18965
+            ]
+          },
+          {
+            "capture_id": 3819688,
+            "panorama_id": 25635,
+            "heading": 135.0,
+            "pitch": 60.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "fill",
+            "filepath": "captures/OAdqe7GKnkXzgaMXtBxh5A/h135_p060_high_v1.jpg",
+            "pano_id": "OAdqe7GKnkXzgaMXtBxh5A",
+            "lat": 37.7152112,
+            "lon": -122.4635436,
+            "similarity": 0.7803199291229304,
+            "score": 1.5335043746099957,
+            "model_hits": [
+              "clip",
+              "place"
+            ],
+            "model_scores": {
+              "clip": 0.7531844454870652,
+              "place": 0.7803199291229304
+            },
+            "embedding_bases": [
+              "clip",
+              "place"
+            ],
+            "embedding_base": "place",
+            "web_path": "/captures/OAdqe7GKnkXzgaMXtBxh5A/h135_p060_high_v1.jpg",
+            "panorama_score": 3.280647,
+            "capture_hits": 2,
+            "heading_support": 1,
+            "pitch_support": 1,
+            "model_support": 2,
+            "top_capture_scores": [
+              1.533504,
+              1.533504
+            ],
+            "family_id": "family-9",
+            "family_score": 3.490647,
+            "family_center_lat": 37.7152112,
+            "family_center_lon": -122.4635436,
+            "family_radius_meters": 35.0,
+            "family_panorama_count": 1,
+            "family_capture_hits": 2,
+            "family_model_support": 2,
+            "family_panorama_ids": [
+              25635
+            ]
+          },
+          {
+            "capture_id": 3125734,
+            "panorama_id": 22076,
+            "heading": 210.0,
+            "pitch": 60.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/mv4of3Xa0AUpVCvhR9iyRw/h210_p060_high_v1.jpg",
+            "pano_id": "mv4of3Xa0AUpVCvhR9iyRw",
+            "lat": 37.7592447,
+            "lon": -122.5005125,
+            "similarity": 0.7602630794440332,
+            "score": 0.7602630794440332,
+            "model_hits": [
+              "clip"
+            ],
+            "model_scores": {
+              "clip": 0.7602630794440332
+            },
+            "embedding_bases": [
+              "clip"
+            ],
+            "embedding_base": "clip",
+            "web_path": "/captures/mv4of3Xa0AUpVCvhR9iyRw/h210_p060_high_v1.jpg",
+            "panorama_score": 3.234574,
+            "capture_hits": 4,
+            "heading_support": 1,
+            "pitch_support": 2,
+            "model_support": 1,
+            "top_capture_scores": [
+              0.760263,
+              0.760263,
+              0.753908,
+              0.753908
+            ],
+            "family_id": "family-10",
+            "family_score": 3.394574,
+            "family_center_lat": 37.7592447,
+            "family_center_lon": -122.5005125,
+            "family_radius_meters": 35.0,
+            "family_panorama_count": 1,
+            "family_capture_hits": 4,
+            "family_model_support": 1,
+            "family_panorama_ids": [
+              22076
+            ]
+          },
+          {
+            "capture_id": 1439066,
+            "panorama_id": 6095,
+            "heading": 285.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "enrich",
+            "filepath": "captures/UGOz67M7-9U5Zgq4mZQgEA/h285_p075_high_v1.jpg",
+            "pano_id": "UGOz67M7-9U5Zgq4mZQgEA",
+            "lat": 37.7849797,
+            "lon": -122.4422143,
+            "similarity": 0.7907821050985553,
+            "score": 0.7907821050985553,
+            "model_hits": [
+              "place"
+            ],
+            "model_scores": {
+              "place": 0.7907821050985553
+            },
+            "embedding_bases": [
+              "place"
+            ],
+            "embedding_base": "place",
+            "web_path": "/captures/UGOz67M7-9U5Zgq4mZQgEA/h285_p075_high_v1.jpg",
+            "panorama_score": 2.653463,
+            "capture_hits": 3,
+            "heading_support": 3,
+            "pitch_support": 2,
+            "model_support": 2,
+            "top_capture_scores": [
+              0.790782,
+              0.786661,
+              0.766125
+            ],
+            "family_id": "family-11",
+            "family_score": 2.873463,
+            "family_center_lat": 37.7849797,
+            "family_center_lon": -122.4422143,
+            "family_radius_meters": 35.0,
+            "family_panorama_count": 1,
+            "family_capture_hits": 3,
+            "family_model_support": 1,
+            "family_panorama_ids": [
+              6095
+            ]
+          },
+          {
+            "capture_id": 412349,
+            "panorama_id": 2108,
+            "heading": 120.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "enrich",
+            "filepath": "captures/rqS8JwbLRlt7gk9yjrWK1Q/h120_p075_high_v1.jpg",
+            "pano_id": "rqS8JwbLRlt7gk9yjrWK1Q",
+            "lat": 37.7688544,
+            "lon": -122.4450585,
+            "similarity": 0.7927336209476255,
+            "score": 0.7927336209476255,
+            "model_hits": [
+              "place"
+            ],
+            "model_scores": {
+              "place": 0.7927336209476255
+            },
+            "embedding_bases": [
+              "place"
+            ],
+            "embedding_base": "place",
+            "web_path": "/captures/rqS8JwbLRlt7gk9yjrWK1Q/h120_p075_high_v1.jpg",
+            "panorama_score": 2.608938,
+            "capture_hits": 3,
+            "heading_support": 3,
+            "pitch_support": 1,
+            "model_support": 2,
+            "top_capture_scores": [
+              0.792734,
+              0.780631,
+              0.750446
+            ],
+            "family_id": "family-12",
+            "family_score": 2.828938,
+            "family_center_lat": 37.7688544,
+            "family_center_lon": -122.4450585,
+            "family_radius_meters": 35.0,
+            "family_panorama_count": 1,
+            "family_capture_hits": 3,
+            "family_model_support": 1,
+            "family_panorama_ids": [
+              2108
+            ]
+          },
+          {
+            "capture_id": 4018751,
+            "panorama_id": 9308,
+            "heading": 15.0,
+            "pitch": 60.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "fill",
+            "filepath": "captures/7863roql0d8WTpv3IGyPmg/h015_p060_high_v1.jpg",
+            "pano_id": "ufpv6GZl1NXniurodr-G2Q",
+            "lat": 37.720472,
+            "lon": -122.4082961,
+            "similarity": 0.7973908540476387,
+            "score": 1.5911502946794398,
+            "model_hits": [
+              "clip",
+              "place"
+            ],
+            "model_scores": {
+              "clip": 0.7937594406318011,
+              "place": 0.7973908540476387
+            },
+            "embedding_bases": [
+              "clip",
+              "place"
+            ],
+            "embedding_base": "place",
+            "web_path": "/captures/7863roql0d8WTpv3IGyPmg/h015_p060_high_v1.jpg",
+            "panorama_score": 2.58307,
+            "capture_hits": 2,
+            "heading_support": 1,
+            "pitch_support": 2,
+            "model_support": 2,
+            "top_capture_scores": [
+              1.59115,
+              0.751232
+            ],
+            "family_id": "family-14",
+            "family_score": 2.79307,
+            "family_center_lat": 37.720472,
+            "family_center_lon": -122.4082961,
+            "family_radius_meters": 35.0,
+            "family_panorama_count": 1,
+            "family_capture_hits": 2,
+            "family_model_support": 2,
+            "family_panorama_ids": [
+              9308
+            ]
+          },
+          {
+            "capture_id": 2588050,
+            "panorama_id": 18664,
+            "heading": 285.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/-BfuDjkRoMdoPHLUv9CTtg/h285_p075_high_v1.jpg",
+            "pano_id": "ZJkj0vZ-k0OPeFJWNzxW3g",
+            "lat": 37.7469845,
+            "lon": -122.4259028,
+            "similarity": 0.7815311420876483,
+            "score": 1.5336201137104437,
+            "model_hits": [
+              "clip",
+              "place"
+            ],
+            "model_scores": {
+              "clip": 0.7520889716227953,
+              "place": 0.7815311420876483
+            },
+            "embedding_bases": [
+              "clip",
+              "place"
+            ],
+            "embedding_base": "place",
+            "web_path": "/captures/-BfuDjkRoMdoPHLUv9CTtg/h285_p075_high_v1.jpg",
+            "panorama_score": 2.545497,
+            "capture_hits": 2,
+            "heading_support": 2,
+            "pitch_support": 1,
+            "model_support": 2,
+            "top_capture_scores": [
+              1.53362,
+              0.763093
+            ],
+            "family_id": "family-17",
+            "family_score": 2.785497,
+            "family_center_lat": 37.7469845,
+            "family_center_lon": -122.4259028,
+            "family_radius_meters": 35.0,
+            "family_panorama_count": 1,
+            "family_capture_hits": 2,
+            "family_model_support": 2,
+            "family_panorama_ids": [
+              18664
+            ]
+          },
+          {
+            "capture_id": 2305053,
+            "panorama_id": 17020,
+            "heading": 45.0,
+            "pitch": 60.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/4InQx_xc9rjolhjkNQk8yA/h045_p060_high_v1.jpg",
+            "pano_id": "zq-EAvRRLxSLa2sBxHK3Bw",
+            "lat": 37.7413218,
+            "lon": -122.4288756,
+            "similarity": 0.7814878095083138,
+            "score": 0.7814878095083138,
+            "model_hits": [
+              "place"
+            ],
+            "model_scores": {
+              "place": 0.7814878095083138
+            },
+            "embedding_bases": [
+              "place"
+            ],
+            "embedding_base": "place",
+            "web_path": "/captures/4InQx_xc9rjolhjkNQk8yA/h045_p060_high_v1.jpg",
+            "panorama_score": 2.593602,
+            "capture_hits": 3,
+            "heading_support": 2,
+            "pitch_support": 2,
+            "model_support": 2,
+            "top_capture_scores": [
+              0.781488,
+              0.77959,
+              0.758745
+            ],
+            "family_id": "family-13",
+            "family_score": 2.783602,
+            "family_center_lat": 37.7413218,
+            "family_center_lon": -122.4288756,
+            "family_radius_meters": 35.0,
+            "family_panorama_count": 1,
+            "family_capture_hits": 3,
+            "family_model_support": 1,
+            "family_panorama_ids": [
+              17020
+            ]
+          },
+          {
+            "capture_id": 1194625,
+            "panorama_id": 5409,
+            "heading": 225.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "enrich",
+            "filepath": "captures/zmdU4sdsr2VUQr3LqdX5MQ/h225_p075_high_v1.jpg",
+            "pano_id": "zmdU4sdsr2VUQr3LqdX5MQ",
+            "lat": 37.7819245,
+            "lon": -122.46867,
+            "similarity": 0.7837007746428948,
+            "score": 1.5577968559679594,
+            "model_hits": [
+              "clip",
+              "place"
+            ],
+            "model_scores": {
+              "clip": 0.7740960813250646,
+              "place": 0.7837007746428948
+            },
+            "embedding_bases": [
+              "clip",
+              "place"
+            ],
+            "embedding_base": "place",
+            "web_path": "/captures/zmdU4sdsr2VUQr3LqdX5MQ/h225_p075_high_v1.jpg",
+            "panorama_score": 2.551632,
+            "capture_hits": 2,
+            "heading_support": 1,
+            "pitch_support": 2,
+            "model_support": 2,
+            "top_capture_scores": [
+              1.557797,
+              0.754791
+            ],
+            "family_id": "family-16",
+            "family_score": 2.761632,
+            "family_center_lat": 37.7819245,
+            "family_center_lon": -122.46867,
+            "family_radius_meters": 35.0,
+            "family_panorama_count": 1,
+            "family_capture_hits": 2,
+            "family_model_support": 2,
+            "family_panorama_ids": [
+              5409
+            ]
+          },
+          {
+            "capture_id": 1558685,
+            "panorama_id": 12566,
+            "heading": 105.0,
+            "pitch": 75.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/i8tb9hMH8622a4vWJDG6Sg/h105_p075_high_v1.jpg",
+            "pano_id": "i8tb9hMH8622a4vWJDG6Sg",
+            "lat": 37.8044011,
+            "lon": -122.422923,
+            "similarity": 0.7970592375187934,
+            "score": 0.7970592375187934,
+            "model_hits": [
+              "place"
+            ],
+            "model_scores": {
+              "place": 0.7970592375187934
+            },
+            "embedding_bases": [
+              "place"
+            ],
+            "embedding_base": "place",
+            "web_path": "/captures/i8tb9hMH8622a4vWJDG6Sg/h105_p075_high_v1.jpg",
+            "panorama_score": 2.576825,
+            "capture_hits": 3,
+            "heading_support": 1,
+            "pitch_support": 1,
+            "model_support": 1,
+            "top_capture_scores": [
+              0.797059,
+              0.797059,
+              0.797059
+            ],
+            "family_id": "family-15",
+            "family_score": 2.736825,
+            "family_center_lat": 37.8044011,
+            "family_center_lon": -122.422923,
+            "family_radius_meters": 35.0,
+            "family_panorama_count": 1,
+            "family_capture_hits": 3,
+            "family_model_support": 1,
+            "family_panorama_ids": [
+              12566
+            ]
+          },
+          {
+            "capture_id": 587034,
+            "panorama_id": 3033,
+            "heading": 15.0,
+            "pitch": 60.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "enrich",
+            "filepath": "captures/cw1_cBPC9te0VQKpShONVg/h015_p060_high_v1.jpg",
+            "pano_id": "cw1_cBPC9te0VQKpShONVg",
+            "lat": 37.7733966,
+            "lon": -122.4810349,
+            "similarity": 0.7960925102233943,
+            "score": 0.7960925102233943,
+            "model_hits": [
+              "place"
+            ],
+            "model_scores": {
+              "place": 0.7960925102233943
+            },
+            "embedding_bases": [
+              "place"
+            ],
+            "embedding_base": "place",
+            "web_path": "/captures/cw1_cBPC9te0VQKpShONVg/h015_p060_high_v1.jpg",
+            "panorama_score": 1.833514,
+            "capture_hits": 2,
+            "heading_support": 2,
+            "pitch_support": 2,
+            "model_support": 1,
+            "top_capture_scores": [
+              0.796093,
+              0.79189
+            ],
+            "family_id": "family-18",
+            "family_score": 2.023514,
+            "family_center_lat": 37.7733966,
+            "family_center_lon": -122.4810349,
+            "family_radius_meters": 35.0,
+            "family_panorama_count": 1,
+            "family_capture_hits": 2,
+            "family_model_support": 1,
+            "family_panorama_ids": [
+              3033
+            ]
+          },
+          {
+            "capture_id": 4331108,
+            "panorama_id": 3293,
+            "heading": 30.0,
+            "pitch": 60.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "fill",
+            "filepath": "captures/hN-eHW-9UKarOOThxZOmxw/h030_p060_high_v1.jpg",
+            "pano_id": "5r2g_KcVFB0Ra_qy8T3DmQ",
+            "lat": 37.7743086,
+            "lon": -122.4746911,
+            "similarity": 0.7790853512832437,
+            "score": 0.7790853512832437,
+            "model_hits": [
+              "place"
+            ],
+            "model_scores": {
+              "place": 0.7790853512832437
+            },
+            "embedding_bases": [
+              "place"
+            ],
+            "embedding_base": "place",
+            "web_path": "/captures/hN-eHW-9UKarOOThxZOmxw/h030_p060_high_v1.jpg",
+            "panorama_score": 1.820318,
+            "capture_hits": 2,
+            "heading_support": 2,
+            "pitch_support": 2,
+            "model_support": 2,
+            "top_capture_scores": [
+              0.779085,
+              0.767742
+            ],
+            "family_id": "family-19",
+            "family_score": 2.010318,
+            "family_center_lat": 37.7743086,
+            "family_center_lon": -122.4746911,
+            "family_radius_meters": 35.0,
+            "family_panorama_count": 1,
+            "family_capture_hits": 2,
+            "family_model_support": 1,
+            "family_panorama_ids": [
+              3293
+            ]
+          },
+          {
+            "capture_id": 3026380,
+            "panorama_id": 21463,
+            "heading": 300.0,
+            "pitch": 60.0,
+            "capture_profile": "high_v1",
+            "capture_kind": "scan",
+            "filepath": "captures/h_LKhMR1AmAWiMzlrLY6BA/h300_p060_high_v1.jpg",
+            "pano_id": "h_LKhMR1AmAWiMzlrLY6BA",
+            "lat": 37.7570001,
+            "lon": -122.4331645,
+            "similarity": 0.7806211709976252,
+            "score": 0.7806211709976252,
+            "model_hits": [
+              "place"
+            ],
+            "model_scores": {
+              "place": 0.7806211709976252
+            },
+            "embedding_bases": [
+              "place"
+            ],
+            "embedding_base": "place",
+            "web_path": "/captures/h_LKhMR1AmAWiMzlrLY6BA/h300_p060_high_v1.jpg",
+            "panorama_score": 1.820298,
+            "capture_hits": 2,
+            "heading_support": 2,
+            "pitch_support": 2,
+            "model_support": 2,
+            "top_capture_scores": [
+              0.780621,
+              0.766002
+            ],
+            "family_id": "family-20",
+            "family_score": 2.010298,
+            "family_center_lat": 37.7570001,
+            "family_center_lon": -122.4331645,
+            "family_radius_meters": 35.0,
+            "family_panorama_count": 1,
+            "family_capture_hits": 2,
+            "family_model_support": 1,
+            "family_panorama_ids": [
+              21463
+            ]
+          }
+        ],
+        "pipeline": {
+          "stages": [
+            {
+              "key": "vector_search",
+              "title": "Vector search",
+              "status": "completed",
+              "detail": "Searched 2 active models across 2 embedding families.",
+              "timings_ms": {
+                "stage": 16255.93,
+                "models": {
+                  "ViT-B-32:open_clip": {
+                    "encode": 19.76,
+                    "search": 7084.74,
+                    "total": 7104.91
+                  },
+                  "ViT-B-16:open_clip_place": {
+                    "encode": 51.19,
+                    "search": 9098.09,
+                    "total": 9149.43
+                  }
+                }
+              }
+            },
+            {
+              "key": "panorama_rerank",
+              "title": "Panorama aggregation",
+              "status": "completed",
+              "detail": "Collapsed 385 capture hits into 160 panorama candidates.",
+              "timings_ms": {
+                "stage": 1.48
+              }
+            },
+            {
+              "key": "family_rank",
+              "title": "Panorama-family ranking",
+              "status": "completed",
+              "detail": "Clustered panoramas within 35m into 20 location families.",
+              "timings_ms": {
+                "stage": 12.27
+              }
+            }
+          ]
+        },
+        "timings_ms": {
+          "vector_search": 16255.93,
+          "panorama_rerank": 1.48,
+          "family_rank": 12.27,
+          "model_timings": {
+            "ViT-B-32:open_clip": {
+              "encode": 19.76,
+              "search": 7084.74,
+              "total": 7104.91
+            },
+            "ViT-B-16:open_clip_place": {
+              "encode": 51.19,
+              "search": 9098.09,
+              "total": 9149.43
+            }
+          },
+          "total": 16292.31
+        }
+      }
+    }
+  }
+}

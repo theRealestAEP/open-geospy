@@ -1,0 +1,5 @@
+query_name,mode,status_code,true_panorama_rank,top_panorama_id,top_score,top_lat,top_lon
+full,search,200,1,5548,1.0,37.7823365,-122.4501723
+full,locate,200,1,5548,10.020328,37.7823365,-122.4501723
+crop,search,200,-1,18965,0.795265197048366,37.7480074,-122.4846753
+crop,locate,200,-1,25387,6.879423,37.7638114,-122.4534042
