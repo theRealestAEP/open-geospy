@@ -1,5 +1,6 @@
 playwright>=1.40.0
 fastapi>=0.109.0
+python-multipart>=0.0.9
 uvicorn>=0.27.0
 global-land-mask>=1.0.0
 modal>=0.73.0

@@ -1,6 +1,13 @@
+:root {
+  color-scheme: dark;
+}
+
 * { box-sizing: border-box; }
 html, body, #root { margin: 0; padding: 0; height: 100%; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: #0b1126;
+}
 
 .app { height: 100%; width: 100%; }
 #map { position: fixed; top: 0; left: 0; right: 360px; bottom: 0; }
@@ -20,13 +27,16 @@ h1 { margin: 0 0 12px; font-size: 18px; }
 
 .sidebarNav {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   margin-bottom: 16px;
-  border-bottom: 1px solid #2f3b65;
-  padding-bottom: 12px;
+  border: 1px solid #2f3b65;
+  border-radius: 16px;
+  padding: 6px;
+  background: linear-gradient(180deg, rgba(18, 29, 58, 0.98) 0%, rgba(12, 20, 42, 0.98) 100%);
 }
 .sidebarNav button {
   flex: 1;
+  min-height: 40px;
 }
 
 h2 { margin: 0 0 10px; font-size: 14px; }
@@ -53,18 +63,51 @@ input, select {
   padding: 8px;
 }
 button {
-  border: none;
-  border-radius: 8px;
-  background: #3a86ff;
+  appearance: none;
+  border: 1px solid rgba(122, 157, 255, 0.28);
+  border-radius: 12px;
+  background: linear-gradient(180deg, #4c95ff 0%, #2f6fe0 100%);
   color: white;
-  padding: 8px 12px;
+  padding: 9px 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   cursor: pointer;
+  box-shadow:
+    0 10px 22px rgba(5, 10, 24, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    filter 140ms ease,
+    background 140ms ease;
+}
+button:hover:not(:disabled) {
+  border-color: rgba(170, 194, 255, 0.4);
+  box-shadow:
+    0 12px 24px rgba(5, 10, 24, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+button:active:not(:disabled) {
+  filter: brightness(0.97);
+  box-shadow:
+    0 6px 14px rgba(5, 10, 24, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+button:focus-visible {
+  outline: 2px solid rgba(255, 209, 102, 0.95);
+  outline-offset: 2px;
 }
 button:disabled {
   opacity: 0.6;
   cursor: default;
 }
-button.ghost { background: #3a3f5a; }
+button.ghost {
+  background: linear-gradient(180deg, rgba(34, 47, 89, 0.95) 0%, rgba(22, 31, 59, 0.95) 100%);
+  color: #dfe8ff;
+}
+button.ghost:hover:not(:disabled) {
+  background: linear-gradient(180deg, rgba(42, 57, 104, 0.98) 0%, rgba(25, 36, 68, 0.98) 100%);
+}
 .buttonRow { display: flex; gap: 8px; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .progressGrid {
@@ -137,6 +180,7 @@ button.ghost { background: #3a3f5a; }
   border-radius: 8px;
   padding: 4px;
   text-align: left;
+  box-shadow: none;
 }
 
 .retrievalItemBest {
@@ -328,4 +372,460 @@ button.ghost { background: #3a3f5a; }
   white-space: nowrap;
   pointer-events: none;
   z-index: 1000;
+}
+
+.locateToggleCard {
+  min-height: 42px;
+  border: 1px solid #33415f;
+  border-radius: 10px;
+  background: #0f1630;
+  padding: 10px;
+}
+
+.locateInlineHint {
+  border: 1px dashed #33415f;
+  border-radius: 10px;
+  background: #0f1630;
+  padding: 10px;
+}
+
+.locateSubtabBar {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  margin-bottom: 10px;
+  border: 1px solid #33415f;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(17, 25, 51, 0.98) 0%, rgba(12, 20, 42, 0.98) 100%);
+  padding: 4px;
+}
+
+.locateSubtabBar button {
+  flex: 1;
+  min-height: 40px;
+}
+
+.sidebarNav button.ghost,
+.locateSubtabBar button.ghost {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: #9fb3e8;
+}
+
+.sidebarNav button.ghost:hover:not(:disabled),
+.locateSubtabBar button.ghost:hover:not(:disabled) {
+  background: rgba(122, 157, 255, 0.12);
+  border-color: rgba(122, 157, 255, 0.18);
+  box-shadow: none;
+}
+
+.orbLabPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.orbLabHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #33415f;
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at top right, rgba(255, 209, 102, 0.18), transparent 42%),
+    linear-gradient(180deg, #101933 0%, #0d1430 100%);
+}
+
+.orbLabEyebrow {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #ffd166;
+}
+
+.orbChipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.orbMaskHint {
+  margin-top: 8px;
+}
+
+.orbStatChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(122, 157, 255, 0.28);
+  background: rgba(20, 31, 64, 0.88);
+  color: #dfe8ff;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.orbQueryCard {
+  padding: 12px;
+  border: 1px solid #33415f;
+  border-radius: 12px;
+  background: #0f1630;
+}
+
+.orbQueryCard img {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid #435480;
+  margin-top: 10px;
+}
+
+.orbComparisonGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.orbComparisonCard {
+  background:
+    radial-gradient(circle at top left, rgba(58, 134, 255, 0.12), transparent 36%),
+    linear-gradient(180deg, #101933 0%, #0f1630 100%);
+  border: 1px solid #3d4c77;
+  border-radius: 14px;
+  padding: 8px;
+  text-align: left;
+  box-shadow: none;
+  transition: transform 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.orbComparisonCard:hover {
+  transform: translateY(-1px);
+  border-color: #7aa0ff;
+  box-shadow: 0 14px 28px rgba(4, 10, 26, 0.34);
+}
+
+.orbComparisonCard img {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid #435480;
+  margin-bottom: 8px;
+}
+
+.orbComparisonCard span {
+  display: block;
+  font-size: 11px;
+  color: #d2dcff;
+}
+
+.orbEmptyState {
+  padding: 16px;
+  border: 1px dashed #435480;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #0f1630 0%, #0c1329 100%);
+}
+
+.orbPopupBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(5, 10, 24, 0.72);
+  backdrop-filter: blur(12px);
+}
+
+.orbPopup {
+  width: min(1080px, calc(100vw - 32px));
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+  border-radius: 24px;
+  border: 1px solid rgba(123, 158, 255, 0.38);
+  background:
+    radial-gradient(circle at top right, rgba(255, 209, 102, 0.18), transparent 30%),
+    radial-gradient(circle at bottom left, rgba(58, 134, 255, 0.14), transparent 34%),
+    linear-gradient(180deg, rgba(11, 18, 38, 0.98) 0%, rgba(9, 15, 30, 0.98) 100%);
+  box-shadow: 0 36px 80px rgba(0, 0, 0, 0.45);
+  color: #e7eeff;
+  padding: 22px;
+  animation: orbPopupRise 220ms ease-out;
+}
+
+.orbPopupHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.orbPopupHeader h2 {
+  margin: 4px 0 8px;
+  font-size: 22px;
+}
+
+.orbPopupHero {
+  display: grid;
+  grid-template-columns: minmax(260px, 320px) 1fr;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.orbPopupQuery {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.orbPopupQuery img {
+  width: 100%;
+  border-radius: 16px;
+  border: 1px solid rgba(122, 157, 255, 0.28);
+  background: #0d1430;
+}
+
+.orbPopupFingerprint {
+  box-shadow: inset 0 0 0 1px rgba(255, 209, 102, 0.16);
+}
+
+.orbPopupStageCard {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(122, 157, 255, 0.28);
+  border-radius: 20px;
+  padding: 18px;
+  min-height: 280px;
+  background:
+    radial-gradient(circle at top left, rgba(87, 214, 255, 0.12), transparent 28%),
+    linear-gradient(180deg, rgba(16, 25, 51, 0.96) 0%, rgba(10, 16, 33, 0.96) 100%);
+}
+
+.orbPopupStageBadge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: 12px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(122, 157, 255, 0.28);
+  background: rgba(18, 29, 58, 0.88);
+  color: #e7eeff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.orbPopupStageBadge-processing {
+  border-color: rgba(255, 209, 102, 0.36);
+  color: #ffe7b0;
+}
+
+.orbPopupStageBadge-results {
+  border-color: rgba(93, 255, 204, 0.34);
+  color: #baffea;
+}
+
+.orbPopupStageBadge-error {
+  border-color: rgba(255, 138, 128, 0.4);
+  color: #ffd0cc;
+}
+
+.orbScannerHalo {
+  position: absolute;
+  width: 220px;
+  height: 220px;
+  right: -20px;
+  top: -10px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(87, 214, 255, 0.18) 0%, rgba(87, 214, 255, 0) 70%);
+  filter: blur(10px);
+  animation: orbPulse 2.2s infinite ease-in-out;
+}
+
+.orbScannerGrid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(122, 157, 255, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(122, 157, 255, 0.08) 1px, transparent 1px);
+  background-size: 24px 24px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.6), transparent 92%);
+}
+
+.orbPopupStageCard::after {
+  content: '';
+  position: absolute;
+  left: -24%;
+  right: -24%;
+  top: 42%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(255, 209, 102, 0.95), transparent);
+  box-shadow: 0 0 24px rgba(255, 209, 102, 0.55);
+  animation: orbSweep 2.4s infinite ease-in-out;
+}
+
+.orbPopupMoment {
+  position: relative;
+  margin-top: 18px;
+  margin-bottom: 8px;
+  font-size: 16px;
+  line-height: 1.45;
+  color: #f6f8ff;
+  max-width: 42ch;
+}
+
+.orbPopupStageSummary {
+  position: relative;
+  margin-bottom: 16px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #afc2f2;
+  max-width: 54ch;
+}
+
+.orbPopupTimeline {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.orbPopupTimelineItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: #8fa4d9;
+}
+
+.orbPopupTimelineItem.active {
+  color: #f6f8ff;
+}
+
+.orbPopupTimelineItem.done {
+  color: #b8cbff;
+}
+
+.orbPopupTimelineItem.failed {
+  color: #ffd0cc;
+}
+
+.orbPopupTimelineItem .pipelineDot {
+  background: #3f4f7a;
+}
+
+.orbPopupTimelineItem.active .pipelineDot {
+  background: #ffd166;
+  box-shadow: 0 0 0 6px rgba(255, 209, 102, 0.14);
+}
+
+.orbPopupTimelineItem.done .pipelineDot {
+  background: #5dffcc;
+}
+
+.orbPopupTimelineItem.failed .pipelineDot {
+  background: #ff8a80;
+  box-shadow: 0 0 0 6px rgba(255, 138, 128, 0.16);
+}
+
+.orbPopup-results .orbPopupStageCard {
+  border-color: rgba(93, 255, 204, 0.34);
+  background:
+    radial-gradient(circle at top left, rgba(93, 255, 204, 0.12), transparent 28%),
+    linear-gradient(180deg, rgba(16, 25, 51, 0.96) 0%, rgba(10, 16, 33, 0.96) 100%);
+}
+
+.orbPopup-results .orbScannerHalo,
+.orbPopup-error .orbScannerHalo {
+  animation: none;
+}
+
+.orbPopup-results .orbScannerHalo {
+  background: radial-gradient(circle, rgba(93, 255, 204, 0.18) 0%, rgba(93, 255, 204, 0) 72%);
+  opacity: 0.85;
+}
+
+.orbPopup-error .orbPopupStageCard {
+  border-color: rgba(255, 138, 128, 0.36);
+  background:
+    radial-gradient(circle at top left, rgba(255, 138, 128, 0.12), transparent 28%),
+    linear-gradient(180deg, rgba(16, 25, 51, 0.96) 0%, rgba(10, 16, 33, 0.96) 100%);
+}
+
+.orbPopup-error .orbScannerHalo {
+  background: radial-gradient(circle, rgba(255, 138, 128, 0.18) 0%, rgba(255, 138, 128, 0) 72%);
+  opacity: 0.82;
+}
+
+.orbPopup-results .orbPopupStageCard::after,
+.orbPopup-error .orbPopupStageCard::after {
+  animation: none;
+  opacity: 0;
+}
+
+.orbPopupResults {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.orbPopupResultsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.orbComparisonGridPopup {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@keyframes orbSweep {
+  0% {
+    transform: translateX(-14%) translateY(-14px);
+    opacity: 0.15;
+  }
+  40% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateX(14%) translateY(14px);
+    opacity: 0.15;
+  }
+}
+
+@keyframes orbPulse {
+  0%, 100% {
+    transform: scale(0.92);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.04);
+    opacity: 0.95;
+  }
+}
+
+@keyframes orbPopupRise {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 920px) {
+  .orbPopupHero {
+    grid-template-columns: 1fr;
+  }
+
+  .orbComparisonGridPopup {
+    grid-template-columns: 1fr;
+  }
 }
