@@ -48,10 +48,15 @@ label { display: block; font-size: 12px; margin-bottom: 8px; color: #b8c0e0; }
   align-items: center;
   gap: 8px;
   margin: 8px 0;
+  cursor: pointer;
 }
 .checkboxLabel input {
-  width: auto;
+  width: 20px;
+  height: 20px;
   margin-top: 0;
+  flex: 0 0 auto;
+  accent-color: #4c95ff;
+  cursor: pointer;
 }
 input, select {
   width: 100%;
@@ -107,6 +112,21 @@ button.ghost {
 }
 button.ghost:hover:not(:disabled) {
   background: linear-gradient(180deg, rgba(42, 57, 104, 0.98) 0%, rgba(25, 36, 68, 0.98) 100%);
+}
+button.compact {
+  min-height: 34px;
+  padding: 7px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  box-shadow: none;
+}
+button.compact:hover:not(:disabled),
+button.compact:active:not(:disabled) {
+  box-shadow: none;
+}
+.locateInlineAction {
+  justify-self: start;
+  width: auto;
 }
 .buttonRow { display: flex; gap: 8px; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -251,6 +271,10 @@ button.ghost:hover:not(:disabled) {
   font-size: 12px;
   color: #d2dcff;
   margin-bottom: 8px;
+}
+
+.locateTunePanel .grid2 {
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
 }
 
 .locatorPipelineCard {
@@ -587,6 +611,186 @@ button.ghost:hover:not(:disabled) {
   background: #0d1430;
 }
 
+.orbPopupLivePreview {
+  position: relative;
+  overflow: hidden;
+  min-height: 280px;
+  border-radius: 16px;
+  border: 1px solid rgba(122, 157, 255, 0.28);
+  background: #0d1430;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.orbPopupLivePreviewImage {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 280px;
+  object-fit: cover;
+  filter: saturate(1.02) contrast(1.02);
+}
+
+.orbPopupLivePreviewShade,
+.orbPopupLivePreviewGrid,
+.orbPopupLivePreviewSweep,
+.orbPopupLivePreviewPulse,
+.orbPopupLivePreviewNodes,
+.orbPopupLivePreviewMask,
+.orbPopupLivePreviewCaption,
+.orbPopupLivePreviewBadge,
+.orbPopupLivePreviewVehicle {
+  position: absolute;
+}
+
+.orbPopupLivePreviewShade {
+  inset: 0;
+  background:
+    radial-gradient(circle at top right, rgba(87, 214, 255, 0.16), transparent 36%),
+    linear-gradient(180deg, rgba(7, 14, 32, 0.16) 0%, rgba(7, 14, 32, 0.46) 100%);
+}
+
+.orbPopupLivePreviewGrid {
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(122, 157, 255, 0.14) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(122, 157, 255, 0.14) 1px, transparent 1px);
+  background-size: 28px 28px;
+  opacity: 0.4;
+}
+
+.orbPopupLivePreviewSweep {
+  inset: -10% -22%;
+  background: linear-gradient(90deg, transparent 0%, rgba(87, 214, 255, 0.1) 42%, rgba(255, 209, 102, 0.4) 50%, rgba(87, 214, 255, 0.1) 58%, transparent 100%);
+  transform: translateX(-36%);
+  animation: orbPreviewSweep 2.4s ease-in-out infinite;
+}
+
+.orbPopupLivePreviewPulse {
+  left: 50%;
+  top: 50%;
+  width: 130px;
+  height: 130px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 209, 102, 0.35);
+  transform: translate(-50%, -50%);
+  box-shadow:
+    0 0 0 14px rgba(87, 214, 255, 0.08),
+    0 0 36px rgba(87, 214, 255, 0.18);
+  animation: orbPreviewPulse 2s ease-in-out infinite;
+}
+
+.orbPopupLivePreviewNodes {
+  inset: 0;
+}
+
+.orbPopupLivePreviewNodes span {
+  left: var(--x);
+  top: var(--y);
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: rgba(87, 214, 255, 0.95);
+  box-shadow: 0 0 0 5px rgba(87, 214, 255, 0.12);
+  transform: translate(-50%, -50%) scale(0.8);
+  animation: orbPreviewNode 1.8s ease-in-out infinite;
+  animation-delay: var(--delay);
+}
+
+.orbPopupLivePreviewMask {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background:
+    linear-gradient(180deg, rgba(18, 30, 64, 0.04) 0%, rgba(18, 30, 64, 0.72) 100%);
+  border-top: 2px solid rgba(255, 209, 102, 0.88);
+}
+
+.orbPopupLivePreviewMask span {
+  position: absolute;
+  right: 12px;
+  top: 8px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(10, 16, 33, 0.82);
+  color: #ffe7b0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.orbPopupLivePreviewBadge {
+  left: 12px;
+  top: 12px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(130, 170, 255, 0.34);
+  background: rgba(12, 20, 42, 0.82);
+  color: #dfe8ff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.orbPopupLivePreviewCaption {
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(10, 16, 33, 0.7);
+  color: #f6f8ff;
+  font-size: 12px;
+  line-height: 1.45;
+  backdrop-filter: blur(8px);
+}
+
+.orbPopupLivePreviewVehicle {
+  bottom: 16%;
+  border: 2px dashed rgba(130, 170, 255, 0.88);
+  border-radius: 14px;
+  background: rgba(56, 72, 214, 0.12);
+  box-shadow: 0 0 0 5px rgba(56, 72, 214, 0.08);
+  animation: orbPreviewVehicle 2.2s ease-in-out infinite;
+}
+
+.orbPopupLivePreviewVehicle-a {
+  left: 14%;
+  width: 20%;
+  height: 16%;
+}
+
+.orbPopupLivePreviewVehicle-b {
+  right: 10%;
+  width: 16%;
+  height: 14%;
+  animation-delay: 0.5s;
+}
+
+.orbPopupLivePreview-scan .orbPopupLivePreviewSweep {
+  animation-duration: 1.7s;
+}
+
+.orbPopupLivePreview-link .orbPopupLivePreviewGrid {
+  opacity: 0.18;
+}
+
+.orbPopupLivePreview-link .orbPopupLivePreviewNodes span {
+  background: rgba(255, 209, 102, 0.95);
+  box-shadow: 0 0 0 5px rgba(255, 209, 102, 0.14);
+}
+
+.orbPopupLivePreview-geometry .orbPopupLivePreviewPulse {
+  border-color: rgba(93, 255, 204, 0.42);
+  box-shadow:
+    0 0 0 18px rgba(93, 255, 204, 0.08),
+    0 0 40px rgba(93, 255, 204, 0.18);
+}
+
+.orbPopupLivePreview-geometry .orbPopupLivePreviewCaption {
+  background: rgba(10, 16, 33, 0.78);
+}
+
 .orbPopupFingerprint {
   box-shadow: inset 0 0 0 1px rgba(255, 209, 102, 0.16);
 }
@@ -687,6 +891,36 @@ button.ghost:hover:not(:disabled) {
   max-width: 54ch;
 }
 
+.orbPopupCurrentCandidate {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  margin-bottom: 16px;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(122, 157, 255, 0.24);
+  background: rgba(10, 16, 33, 0.76);
+  text-align: left;
+  box-shadow: none;
+}
+
+.orbPopupCurrentCandidate img {
+  width: 100%;
+  max-height: 180px;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 1px solid rgba(122, 157, 255, 0.22);
+  background: #0d1430;
+}
+
+.orbPopupCurrentCandidate span {
+  display: block;
+  font-size: 11px;
+  color: #d2dcff;
+}
+
 .orbPopupTimeline {
   position: relative;
   display: flex;
@@ -784,6 +1018,14 @@ button.ghost:hover:not(:disabled) {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.orbPopupLiveResults .orbComparisonGridPopup {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.orbPopupLiveComparisonGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 @keyframes orbSweep {
   0% {
     transform: translateX(-14%) translateY(-14px);
@@ -817,6 +1059,53 @@ button.ghost:hover:not(:disabled) {
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes orbPreviewSweep {
+  0% {
+    transform: translateX(-34%);
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.92;
+  }
+  100% {
+    transform: translateX(34%);
+    opacity: 0.36;
+  }
+}
+
+@keyframes orbPreviewPulse {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(0.94);
+    opacity: 0.72;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.08);
+    opacity: 1;
+  }
+}
+
+@keyframes orbPreviewNode {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(0.72);
+    opacity: 0.35;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.08);
+    opacity: 1;
+  }
+}
+
+@keyframes orbPreviewVehicle {
+  0%, 100% {
+    transform: translateY(0);
+    opacity: 0.7;
+  }
+  50% {
+    transform: translateY(-3px);
+    opacity: 1;
   }
 }
 

@@ -31,6 +31,11 @@ const retrievalControlHelp = {
   locate_orb_enabled: 'Run ORB local-feature reranking on the top vector candidates before panorama aggregation.',
   locate_orb_top_n: 'How many top vector candidates should be reranked with ORB.',
   locate_orb_weight: 'How strongly the ORB score boosts the vector score during locate reranking.',
+  locate_orb_feature_count: 'How many ORB keypoints to extract per image during reranking. Higher values are slower but can preserve more detail.',
+  locate_orb_ransac_top_k: 'How many top ORB candidates should be geometry-checked with RANSAC.',
+  locate_orb_ignore_bottom_ratio: 'Optional fraction of the lower frame to ignore during ORB feature extraction.',
+  locate_sam2_mask_cars: 'Use local SAM 2 masking to remove cars and other road vehicles from the query image and top ORB review candidates before feature extraction.',
+  locate_sam2_mask_trees: 'Experimental: use local SAM 2 masking to remove trees and other vegetation from the query image and top ORB review candidates before feature extraction.',
   locate_orb_popup: 'Optionally auto-open the ORB fingerprint popup while comparisons are running.'
 };
 const orbPopupMoments = [
@@ -38,6 +43,23 @@ const orbPopupMoments = [
   'Sweeping candidate facades for matching fingerprints.',
   'Linking feature pairs and pruning weak matches.',
   'Testing the strongest alignments for geometric consistency.'
+];
+const orbPopupPreviewStages = ['keypoints', 'scan', 'link', 'geometry'];
+const orbPopupPreviewPoints = [
+  { x: 14, y: 18, delay: 0.1 },
+  { x: 31, y: 24, delay: 0.35 },
+  { x: 52, y: 21, delay: 0.2 },
+  { x: 71, y: 17, delay: 0.55 },
+  { x: 83, y: 28, delay: 0.75 },
+  { x: 24, y: 43, delay: 0.4 },
+  { x: 45, y: 39, delay: 0.15 },
+  { x: 63, y: 46, delay: 0.6 },
+  { x: 78, y: 41, delay: 0.3 },
+  { x: 18, y: 62, delay: 0.8 },
+  { x: 39, y: 68, delay: 0.5 },
+  { x: 58, y: 61, delay: 0.95 },
+  { x: 74, y: 66, delay: 0.7 },
+  { x: 86, y: 54, delay: 1.05 }
 ];
 
 function buildLocatePipelineStages(activeKey = 'vector_search', status = 'running') {
@@ -78,6 +100,103 @@ function formatRetrievalModelLabel(modelName, modelVersion) {
 function formatMetric(value, digits = 3) {
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric.toFixed(digits) : '0.000';
+}
+
+function createClientRetrievalId() {
+  if (
+    typeof window !== 'undefined' &&
+    window.crypto &&
+    typeof window.crypto.randomUUID === 'function'
+  ) {
+    return `locate-${window.crypto.randomUUID()}`;
+  }
+  return `locate-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function mapLocateProgressPhaseToPreviewStage(phase, orbProgress) {
+  const normalizedPhase = String(phase || '').trim().toLowerCase();
+  const processedCandidates = Number(orbProgress?.processed_candidates || 0);
+  const latestComparison = Boolean(orbProgress?.latest_comparison);
+  if (normalizedPhase === 'vector_search') return 'scan';
+  if (normalizedPhase === 'orb_rerank') {
+    if (latestComparison) {
+      return processedCandidates > 2 ? 'geometry' : 'link';
+    }
+    return 'keypoints';
+  }
+  if (normalizedPhase === 'panorama_rerank' || normalizedPhase === 'family_rank') {
+    return 'geometry';
+  }
+  return 'keypoints';
+}
+
+function formatLocateProgressStageBadge(phase, orbEnabled) {
+  const normalizedPhase = String(phase || '').trim().toLowerCase();
+  if (normalizedPhase === 'vector_search') return 'Vector search';
+  if (normalizedPhase === 'orb_rerank') return 'ORB rerank';
+  if (normalizedPhase === 'panorama_rerank') return orbEnabled ? 'Panorama merge' : 'Panorama aggregation';
+  if (normalizedPhase === 'family_rank') return 'Family ranking';
+  if (normalizedPhase === 'completed') return 'Wrapping up';
+  return orbEnabled ? 'Preparing ORB' : 'Preparing locate';
+}
+
+function buildLocatePipelineStagesFromProgress(progress) {
+  const phase = String(progress?.phase || 'starting').trim().toLowerCase();
+  const status = String(progress?.status || 'processing').trim().toLowerCase();
+  const orb = progress?.orb && typeof progress.orb === 'object' ? progress.orb : {};
+  const orbEnabled = Boolean(orb.enabled);
+  const stageStatus =
+    status === 'error' ? 'failed' : status === 'completed' ? 'completed' : 'running';
+  let activeKey = 'vector_search';
+  if (phase === 'orb_rerank') {
+    activeKey = 'orb_rerank';
+  } else if (phase === 'panorama_rerank') {
+    activeKey = 'panorama_rerank';
+  } else if (phase === 'family_rank' || phase === 'completed') {
+    activeKey = 'family_rank';
+  }
+  return buildLocatePipelineStages(activeKey, stageStatus).map((stage) => {
+    const next = { ...stage };
+    if (stage.key === 'vector_search') {
+      const vectorCandidates = Number(progress?.vector_candidates || 0);
+      if (vectorCandidates > 0) {
+        next.detail = `Retrieved ${vectorCandidates} raw vector candidates from the selected model.`;
+      } else if (phase === 'vector_search' || phase === 'starting') {
+        next.detail = String(progress?.message || 'Searching embeddings for nearby matches.');
+      }
+    }
+    if (stage.key === 'orb_rerank') {
+      if (!orbEnabled && phase !== 'starting' && phase !== 'vector_search') {
+        next.status = 'completed';
+        next.detail = 'Skipped for this run.';
+      } else if (orbEnabled) {
+        const processedCandidates = Number(orb.processed_candidates || 0);
+        const candidateCount = Number(orb.candidate_count || 0);
+        if (processedCandidates > 0 && candidateCount > 0) {
+          next.detail = `Compared ${processedCandidates} of ${candidateCount} candidates with ORB fingerprints.`;
+        } else if (phase === 'orb_rerank') {
+          next.detail = String(progress?.message || 'Extracting query features and comparing candidates.');
+        }
+      }
+    }
+    if (stage.key === 'panorama_rerank') {
+      const panoramaCandidates = Number(progress?.panorama_candidates || 0);
+      if (panoramaCandidates > 0) {
+        next.detail = `Collapsed capture hits into ${panoramaCandidates} panorama candidates.`;
+      } else if (phase === 'panorama_rerank') {
+        next.detail = String(progress?.message || 'Collapsing reranked captures into panoramas.');
+      }
+    }
+    if (stage.key === 'family_rank') {
+      const familyMatches = Number(progress?.matches || 0);
+      if (familyMatches > 0) {
+        next.detail = `Ranking ${familyMatches} nearby location families for the final result.`;
+      } else if (phase === 'family_rank' || phase === 'completed') {
+        next.detail = String(progress?.message || 'Grouping panoramas into nearby location families.');
+      }
+    }
+    return next;
+  });
 }
 
 function getOrbPopupTimelineState(index, phase, activeMoment) {
@@ -122,6 +241,8 @@ function App() {
   const polygonDraftPreviewRef = useRef(null);
   const polygonDraftVertexLayerRef = useRef(null);
   const locateOrbPopupSuppressedRef = useRef(false);
+  const locateRequestAbortRef = useRef(null);
+  const currentPathRef = useRef(location.pathname);
   const pointModeButtonRef = useRef(null);
   const polygonModeButtonRef = useRef(null);
   const freeDrawButtonRef = useRef(null);
@@ -169,6 +290,11 @@ function App() {
   const [locateOrbEnabled, setLocateOrbEnabled] = useState(false);
   const [locateOrbTopN, setLocateOrbTopN] = useState(100);
   const [locateOrbWeight, setLocateOrbWeight] = useState(0.75);
+  const [locateOrbFeatureCount, setLocateOrbFeatureCount] = useState(500);
+  const [locateOrbRansacTopK, setLocateOrbRansacTopK] = useState(10);
+  const [locateOrbIgnoreBottomRatio, setLocateOrbIgnoreBottomRatio] = useState(0.28);
+  const [locateSam2MaskCars, setLocateSam2MaskCars] = useState(false);
+  const [locateSam2MaskTrees, setLocateSam2MaskTrees] = useState(false);
   const [locateStatus, setLocateStatus] = useState('');
   const [locateBusy, setLocateBusy] = useState(false);
   const [locateResults, setLocateResults] = useState([]);
@@ -181,6 +307,8 @@ function App() {
   const [locateOrbPopupOpen, setLocateOrbPopupOpen] = useState(false);
   const [locateOrbPopupPhase, setLocateOrbPopupPhase] = useState('idle');
   const [locateOrbPopupMoment, setLocateOrbPopupMoment] = useState(0);
+  const [locateProgressId, setLocateProgressId] = useState('');
+  const [locateLiveProgress, setLocateLiveProgress] = useState(null);
   const [searchEmbeddingBase, setSearchEmbeddingBase] = useState('');
   const [locateEmbeddingBase, setLocateEmbeddingBase] = useState('');
   const [retrievalEmbeddingBaseOptions, setRetrievalEmbeddingBaseOptions] = useState([
@@ -600,6 +728,27 @@ function App() {
   }, []);
 
   useEffect(() => {
+    currentPathRef.current = location.pathname;
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (isLocatePage) {
+      return;
+    }
+    locateOrbPopupSuppressedRef.current = true;
+    setLocateOrbPopupOpen(false);
+    setLocateOrbPopupPhase('idle');
+    setLocateOrbPopupMoment(0);
+    setLocateLiveProgress(null);
+    setLocateProgressId('');
+    if (locateRequestAbortRef.current) {
+      locateRequestAbortRef.current.abort();
+      locateRequestAbortRef.current = null;
+    }
+    setLocateBusy(false);
+  }, [isLocatePage]);
+
+  useEffect(() => {
     if (
       location.pathname !== '/scan' &&
       location.pathname !== '/search' &&
@@ -669,6 +818,40 @@ function App() {
     }, 1400);
     return () => window.clearInterval(intervalId);
   }, [locateOrbPopupOpen, locateOrbPopupPhase]);
+
+  useEffect(() => {
+    if (!locateBusy || !locateProgressId) {
+      return undefined;
+    }
+    let cancelled = false;
+    const pollProgress = async () => {
+      try {
+        const res = await fetch(`/api/retrieval/progress/${encodeURIComponent(locateProgressId)}`, {
+          cache: 'no-store'
+        });
+        if (!res.ok) {
+          return;
+        }
+        const body = await res.json();
+        if (cancelled) {
+          return;
+        }
+        setLocateLiveProgress(body);
+        setLocatePipeline({ stages: buildLocatePipelineStagesFromProgress(body) });
+        if (String(body?.message || '').trim()) {
+          setLocateStatus(String(body.message).trim());
+        }
+      } catch (error) {
+        console.error('locate progress error', error);
+      }
+    };
+    pollProgress();
+    const intervalId = window.setInterval(pollProgress, 700);
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [locateBusy, locateProgressId]);
 
   const setOneShotTarget = (lat, lon) => {
     setOneShotLat(lat.toFixed(7));
@@ -1221,7 +1404,15 @@ function App() {
       setLocateStatus('Pick a reference image first.');
       return;
     }
+    if (locateRequestAbortRef.current) {
+      locateRequestAbortRef.current.abort();
+    }
+    const requestController = new AbortController();
+    locateRequestAbortRef.current = requestController;
+    const retrievalId = createClientRetrievalId();
     setLocateBusy(true);
+    setLocateProgressId(retrievalId);
+    setLocateLiveProgress(null);
     setLocateViewTab('families');
     setLocateOrbStats(null);
     setLocateOrbComparisons([]);
@@ -1242,6 +1433,7 @@ function App() {
     try {
       const formData = new FormData();
       formData.append('image', retrievalFile);
+      formData.append('client_retrieval_id', retrievalId);
       formData.append('top_k', String(Math.max(1, Number(locateTopK) || 8)));
       formData.append('embedding_base', locateEmbeddingBase);
       formData.append('orb_enabled', locateOrbEnabled ? '1' : '0');
@@ -1251,6 +1443,26 @@ function App() {
         if (!Number.isNaN(parsedOrbWeight)) {
           formData.append('orb_weight', String(parsedOrbWeight));
         }
+        const parsedFeatureCount = Number(locateOrbFeatureCount);
+        if (!Number.isNaN(parsedFeatureCount)) {
+          formData.append('orb_feature_count', String(Math.max(100, Math.min(2000, parsedFeatureCount))));
+        }
+        const parsedRansacTopK = Number(locateOrbRansacTopK);
+        if (!Number.isNaN(parsedRansacTopK)) {
+          formData.append(
+            'orb_ransac_top_k',
+            String(Math.max(0, Math.min(Math.max(1, Number(locateOrbTopN) || 100), parsedRansacTopK)))
+          );
+        }
+        const parsedIgnoreBottomRatio = Number(locateOrbIgnoreBottomRatio);
+        if (!Number.isNaN(parsedIgnoreBottomRatio)) {
+          formData.append(
+            'orb_ignore_bottom_ratio',
+            String(Math.max(0, Math.min(0.6, parsedIgnoreBottomRatio)))
+          );
+        }
+        formData.append('sam2_mask_cars', locateSam2MaskCars ? '1' : '0');
+        formData.append('sam2_mask_trees', locateSam2MaskTrees ? '1' : '0');
       }
       const minSimilarityRaw = String(retrievalMinSimilarity ?? '').trim();
       if (minSimilarityRaw !== '') {
@@ -1261,9 +1473,13 @@ function App() {
       }
       const res = await fetch('/api/retrieval/locate-by-image', {
         method: 'POST',
-        body: formData
+        body: formData,
+        signal: requestController.signal
       });
       const body = await res.json();
+      if (currentPathRef.current !== '/locate') {
+        return;
+      }
       if (!res.ok) {
         setLocateStatus(`Locate failed: ${body?.detail || 'unknown error'}`);
         setLocateResults([]);
@@ -1278,6 +1494,7 @@ function App() {
       const pipelineStages = Array.isArray(body?.pipeline?.stages) ? body.pipeline.stages : [];
       const orbStats = body?.orb?.stats && typeof body.orb.stats === 'object' ? body.orb.stats : null;
       const orbComparisons = Array.isArray(orbStats?.comparisons) ? orbStats.comparisons : [];
+      setLocateLiveProgress(null);
       setLocateResults(matches);
       setTopLocateFamilyId(matches.length ? String(matches[0].family_id || '') : null);
       setLocateOrbStats(orbStats);
@@ -1302,6 +1519,9 @@ function App() {
       }
       await loadRetrievalStats();
     } catch (error) {
+      if (error?.name === 'AbortError') {
+        return;
+      }
       setLocateStatus(`Locate failed: ${error.message}`);
       setLocateResults([]);
       setTopLocateFamilyId(null);
@@ -1310,6 +1530,9 @@ function App() {
       setLocatePipeline({ stages: buildLocatePipelineStages('vector_search', 'failed') });
       setLocateOrbPopupPhase('error');
     } finally {
+      if (locateRequestAbortRef.current === requestController) {
+        locateRequestAbortRef.current = null;
+      }
       setLocateBusy(false);
     }
   };
@@ -1393,10 +1616,73 @@ function App() {
     setScanForm((prev) => ({ ...prev, [field]: value }));
   };
 
+  const liveLocateProgress =
+    locateLiveProgress && typeof locateLiveProgress === 'object' ? locateLiveProgress : null;
+  const liveLocateOrbStats =
+    liveLocateProgress?.orb && typeof liveLocateProgress.orb === 'object'
+      ? liveLocateProgress.orb
+      : null;
+  const displayedLocateOrbStats =
+    locateBusy && liveLocateOrbStats
+      ? { ...(locateOrbStats || {}), ...liveLocateOrbStats }
+      : locateOrbStats;
+  const liveLocateComparison =
+    locateOrbPopupPhase === 'processing' &&
+    liveLocateOrbStats?.latest_comparison &&
+    typeof liveLocateOrbStats.latest_comparison === 'object'
+      ? liveLocateOrbStats.latest_comparison
+      : null;
   const hasLocateOrbComparisons = locateOrbComparisons.length > 0;
-  const locateOrbPopupMessage = orbPopupMoments[locateOrbPopupMoment % orbPopupMoments.length];
-  const locateOrbIgnoreBottomRatio = Number(locateOrbStats?.ignore_bottom_ratio || 0);
-  const locateOrbMaskPercent = Math.max(0, Math.round(locateOrbIgnoreBottomRatio * 100));
+  const fallbackLocateOrbPopupMessage = orbPopupMoments[locateOrbPopupMoment % orbPopupMoments.length];
+  const liveLocatePhase = String(liveLocateProgress?.phase || '').trim().toLowerCase();
+  const locateOrbPopupMessage =
+    locateOrbPopupPhase === 'processing'
+      ? String(liveLocateProgress?.message || '').trim() || fallbackLocateOrbPopupMessage
+      : fallbackLocateOrbPopupMessage;
+  const locateOrbPreviewStage =
+    locateOrbPopupPhase === 'processing'
+      ? mapLocateProgressPhaseToPreviewStage(liveLocatePhase, liveLocateOrbStats)
+      : orbPopupPreviewStages[locateOrbPopupMoment % orbPopupPreviewStages.length];
+  const locateOrbAppliedIgnoreBottomRatio =
+    locateOrbPopupPhase === 'processing'
+      ? Math.max(
+          0,
+          Math.min(
+            0.6,
+            Number(liveLocateOrbStats?.ignore_bottom_ratio ?? locateOrbIgnoreBottomRatio) || 0
+          )
+        )
+      : Number(displayedLocateOrbStats?.ignore_bottom_ratio || 0);
+  const locateOrbMaskPercent = Math.max(0, Math.round(locateOrbAppliedIgnoreBottomRatio * 100));
+  const locateSam2Enabled =
+    locateOrbPopupPhase === 'processing'
+      ? Boolean(
+          liveLocateOrbStats?.sam2_enabled ??
+            (locateSam2MaskCars || locateSam2MaskTrees)
+        )
+      : Boolean(displayedLocateOrbStats?.sam2_enabled);
+  const locateSam2CarsEnabled =
+    locateOrbPopupPhase === 'processing'
+      ? Boolean(liveLocateOrbStats?.sam2_mask_cars ?? locateSam2MaskCars)
+      : Boolean(displayedLocateOrbStats?.sam2_mask_cars);
+  const locateSam2TreesEnabled =
+    locateOrbPopupPhase === 'processing'
+      ? Boolean(liveLocateOrbStats?.sam2_mask_trees ?? locateSam2MaskTrees)
+      : Boolean(displayedLocateOrbStats?.sam2_mask_trees);
+  const locateSam2VehicleBoxes = Number(
+    displayedLocateOrbStats?.sam2_vehicle_boxes || liveLocateOrbStats?.sam2_vehicle_boxes || 0
+  );
+  const locateSam2TreeBoxes = Number(
+    displayedLocateOrbStats?.sam2_tree_boxes || liveLocateOrbStats?.sam2_tree_boxes || 0
+  );
+  const locateOrbProcessedCandidates = Number(liveLocateOrbStats?.processed_candidates || 0);
+  const locateOrbCandidateCount = Number(
+    liveLocateOrbStats?.candidate_count || displayedLocateOrbStats?.candidate_count || 0
+  );
+  const locateOrbResolvedFeatureCount = Math.max(
+    0,
+    Number(displayedLocateOrbStats?.feature_count || locateOrbFeatureCount || 0)
+  );
   const locateModelLabel =
     retrievalEmbeddingBaseOptions.find((option) => option.value === locateEmbeddingBase)?.label ||
     String(locateEmbeddingBase || 'active').toUpperCase();
@@ -1416,16 +1702,29 @@ function App() {
           : 'ORB finished, but this run did not produce visualization overlays.';
   const locateOrbPopupStageBadge =
     locateOrbPopupPhase === 'processing'
-      ? 'Live comparison'
+      ? formatLocateProgressStageBadge(
+          liveLocatePhase,
+          Boolean(liveLocateOrbStats?.enabled ?? locateOrbEnabled)
+        )
       : locateOrbPopupPhase === 'error'
         ? 'Needs attention'
         : 'Completed';
   const locateOrbPopupStageSummary =
     locateOrbPopupPhase === 'processing'
-      ? 'Building feature pairs and testing them for geometric consistency.'
+      ? liveLocatePhase === 'vector_search'
+        ? 'Running the same raw vector retrieval step as Search before any local-feature rerank is applied.'
+        : liveLocatePhase === 'orb_rerank'
+          ? locateOrbCandidateCount > 0
+            ? `Compared ${locateOrbProcessedCandidates} of ${locateOrbCandidateCount} candidates using up to ${locateOrbResolvedFeatureCount} ORB features per image.`
+            : `Extracting up to ${locateOrbResolvedFeatureCount} ORB keypoints per image before matching and RANSAC checks.`
+          : liveLocatePhase === 'panorama_rerank'
+            ? 'The backend finished ORB scoring and is collapsing capture hits into panorama candidates.'
+            : liveLocatePhase === 'family_rank'
+              ? 'The backend is clustering panorama candidates into nearby location families.'
+              : 'Preparing the query image and ORB pipeline.'
       : locateOrbPopupPhase === 'error'
         ? 'The comparison stage stopped before it could finish.'
-        : `Scored ${Number(locateOrbStats?.candidates_scored || 0)} candidates and kept ${locateOrbComparisons.length} visual overlays for review.`;
+        : `Scored ${Number(displayedLocateOrbStats?.candidates_scored || 0)} candidates and kept ${locateOrbComparisons.length} visual overlays for review.`;
   const locateOrbPopupCloseLabel =
     locateOrbPopupPhase === 'processing'
       ? 'Hide'
@@ -1788,7 +2087,6 @@ function App() {
                     max="5000"
                     value={locateOrbTopN}
                     onChange={(e) => setLocateOrbTopN(e.target.value)}
-                    disabled={!locateOrbEnabled}
                   />
                 </label>
               </div>
@@ -1802,23 +2100,77 @@ function App() {
                     step="0.05"
                     value={locateOrbWeight}
                     onChange={(e) => setLocateOrbWeight(e.target.value)}
-                    disabled={!locateOrbEnabled}
                   />
                 </label>
               </div>
+              <details className="locateTunePanel">
+                <summary>Advanced ORB options</summary>
+                <div className="grid2">
+                  <label title={retrievalControlHelp.locate_orb_feature_count}>
+                    ORB feature count
+                    <input
+                      type="number"
+                      min="100"
+                      max="2000"
+                      step="50"
+                      value={locateOrbFeatureCount}
+                      onChange={(e) => setLocateOrbFeatureCount(e.target.value)}
+                    />
+                  </label>
+                  <label title={retrievalControlHelp.locate_orb_ransac_top_k}>
+                    RANSAC Top K
+                    <input
+                      type="number"
+                      min="0"
+                      max={String(Math.max(1, Number(locateOrbTopN) || 100))}
+                      value={locateOrbRansacTopK}
+                      onChange={(e) => setLocateOrbRansacTopK(e.target.value)}
+                    />
+                  </label>
+                  <label title={retrievalControlHelp.locate_orb_ignore_bottom_ratio}>
+                    Ignore lower frame ratio
+                    <input
+                      type="number"
+                      min="0"
+                      max="0.6"
+                      step="0.02"
+                      value={locateOrbIgnoreBottomRatio}
+                      onChange={(e) => setLocateOrbIgnoreBottomRatio(e.target.value)}
+                    />
+                  </label>
+                </div>
+                <label className="checkboxLabel locateToggleCard" title={retrievalControlHelp.locate_sam2_mask_cars}>
+                  <input
+                    type="checkbox"
+                    checked={locateSam2MaskCars}
+                    onChange={(e) => setLocateSam2MaskCars(e.target.checked)}
+                  />
+                  Mask cars with local SAM 2
+                </label>
+                <label className="checkboxLabel locateToggleCard" title={retrievalControlHelp.locate_sam2_mask_trees}>
+                  <input
+                    type="checkbox"
+                    checked={locateSam2MaskTrees}
+                    onChange={(e) => setLocateSam2MaskTrees(e.target.checked)}
+                  />
+                  Mask trees and vegetation
+                </label>
+                <div className="hint">
+                  These settings apply when ORB rerank is enabled. SAM 2 masking affects the query image plus the top ORB review candidates only, so the initial vector search still uses the original image.
+                </div>
+              </details>
               <div className="grid2">
                 <label className="checkboxLabel locateToggleCard" title={retrievalControlHelp.locate_orb_popup}>
                   <input
                     type="checkbox"
                     checked={locateOrbPopupEnabled}
                     onChange={(e) => setLocateOrbPopupEnabled(e.target.checked)}
-                    disabled={!locateOrbEnabled}
                   />
                   Show ORB popup
                 </label>
                 {hasLocateOrbComparisons ? (
                   <button
-                    className="ghost"
+                    className="ghost compact locateInlineAction"
                     onClick={() => {
                       locateOrbPopupSuppressedRef.current = false;
                       setLocateOrbPopupPhase('results');
@@ -1847,6 +2199,8 @@ function App() {
                     setLocateViewTab('families');
                     setLocateOrbStats(null);
                     setLocateOrbComparisons([]);
+                    setLocateLiveProgress(null);
+                    setLocateProgressId('');
                     setLocateOrbPopupOpen(false);
                     setLocateOrbPopupPhase('idle');
                     locateOrbPopupSuppressedRef.current = false;
@@ -1946,18 +2300,29 @@ function App() {
                         </div>
                       ) : null}
                     </div>
-                    {locateOrbStats ? (
+                    {displayedLocateOrbStats ? (
                       <div className="orbChipRow">
-                        <span className="orbStatChip">scored {Number(locateOrbStats.candidates_scored || 0)}</span>
-                        <span className="orbStatChip">RANSAC {Number(locateOrbStats.ransac_checked || 0)}</span>
-                        <span className="orbStatChip">query kp {Number(locateOrbStats.query_keypoints || 0)}</span>
+                        <span className="orbStatChip">scored {Number(displayedLocateOrbStats.candidates_scored || 0)}</span>
+                        <span className="orbStatChip">RANSAC {Number(displayedLocateOrbStats.ransac_checked || 0)}</span>
+                        <span className="orbStatChip">query kp {Number(displayedLocateOrbStats.query_keypoints || 0)}</span>
+                        <span className="orbStatChip">features {locateOrbResolvedFeatureCount}</span>
                         {locateOrbMaskPercent > 0 ? (
                           <span className="orbStatChip">lower mask {locateOrbMaskPercent}%</span>
+                        ) : null}
+                        {locateSam2CarsEnabled ? (
+                          <span className="orbStatChip">
+                            SAM 2 cars {locateSam2VehicleBoxes > 0 ? locateSam2VehicleBoxes : 0}
+                          </span>
+                        ) : null}
+                        {locateSam2TreesEnabled ? (
+                          <span className="orbStatChip">
+                            trees {locateSam2TreeBoxes > 0 ? locateSam2TreeBoxes : 0}
+                          </span>
                         ) : null}
                       </div>
                     ) : null}
                   </div>
-                  {String(locateOrbStats?.query_fingerprint_data_url || '').trim() ? (
+                  {String(displayedLocateOrbStats?.query_fingerprint_data_url || '').trim() ? (
                     <div className="orbQueryCard">
                       <div>
                         <div className="orbLabEyebrow">Query fingerprint</div>
@@ -1966,7 +2331,7 @@ function App() {
                         </div>
                       </div>
                       <img
-                        src={locateOrbStats.query_fingerprint_data_url}
+                        src={displayedLocateOrbStats.query_fingerprint_data_url}
                         alt="ORB query fingerprint"
                       />
                     </div>
@@ -2006,6 +2371,9 @@ function App() {
                             visualized {Number(comparison.visual_match_count || 0)} match lines
                           </span>
                           <span>
+                            mean match distance {formatMetric(comparison.orb_mean_match_distance || 0, 1)}
+                          </span>
+                          <span>
                             query {Number(comparison.query_keypoints || 0)} kp | candidate {Number(comparison.candidate_keypoints || 0)} kp
                           </span>
                         </button>
@@ -2016,7 +2384,7 @@ function App() {
                       <div className="orbLabEyebrow">No fingerprint comparisons yet</div>
                       <div className="hint">
                         Turn on ORB rerank and run Locate to open the comparison lab.
-                        {locateOrbStats?.reason ? ` Current state: ${locateOrbStats.reason}.` : ''}
+                        {displayedLocateOrbStats?.reason ? ` Current state: ${displayedLocateOrbStats.reason}.` : ''}
                       </div>
                     </div>
                   )}
@@ -2047,7 +2415,7 @@ function App() {
           </>
         ) : null}
       </aside>
-      {locateOrbPopupOpen ? (
+      {isLocatePage && locateOrbPopupOpen ? (
         <div
           className="orbPopupBackdrop"
           onClick={() => {
@@ -2080,16 +2448,73 @@ function App() {
               <div className="orbPopupQuery">
                 <div className="orbLabEyebrow">Reference image</div>
                 {retrievalFilePreviewUrl ? (
-                  <img src={retrievalFilePreviewUrl} alt="Reference query" />
+                  locateOrbPopupPhase === 'processing' ? (
+                    <div className={`orbPopupLivePreview orbPopupLivePreview-${locateOrbPreviewStage}`}>
+                      <img
+                        className="orbPopupLivePreviewImage"
+                        src={retrievalFilePreviewUrl}
+                        alt="Reference query"
+                      />
+                      <div className="orbPopupLivePreviewShade" />
+                      <div className="orbPopupLivePreviewGrid" />
+                      <div className="orbPopupLivePreviewSweep" />
+                      <div className="orbPopupLivePreviewPulse" />
+                      <div className="orbPopupLivePreviewNodes" aria-hidden="true">
+                        {orbPopupPreviewPoints.map((point, index) => (
+                          <span
+                            key={`orb-preview-point-${index}`}
+                            style={{
+                              '--x': `${point.x}%`,
+                              '--y': `${point.y}%`,
+                              '--delay': `${point.delay}s`
+                            }}
+                          />
+                        ))}
+                      </div>
+                      {locateSam2Enabled ? (
+                        <>
+                          {locateSam2CarsEnabled ? (
+                            <>
+                              <div className="orbPopupLivePreviewVehicle orbPopupLivePreviewVehicle-a" />
+                              <div className="orbPopupLivePreviewVehicle orbPopupLivePreviewVehicle-b" />
+                            </>
+                          ) : null}
+                          <div className="orbPopupLivePreviewBadge">
+                            {locateSam2CarsEnabled || locateSam2TreesEnabled
+                              ? `SAM 2 ${[
+                                  locateSam2CarsEnabled ? `cars ${locateSam2VehicleBoxes}` : '',
+                                  locateSam2TreesEnabled ? `trees ${locateSam2TreeBoxes}` : ''
+                                ]
+                                  .filter(Boolean)
+                                  .join(' | ')}`
+                              : 'SAM 2 masking queued'}
+                          </div>
+                        </>
+                      ) : null}
+                      {locateOrbMaskPercent > 0 ? (
+                        <div
+                          className="orbPopupLivePreviewMask"
+                          style={{ height: `${locateOrbMaskPercent}%` }}
+                        >
+                          <span>ignore lower {locateOrbMaskPercent}%</span>
+                        </div>
+                      ) : null}
+                      <div className="orbPopupLivePreviewCaption">
+                        {locateOrbPopupMessage}
+                      </div>
+                    </div>
+                  ) : (
+                    <img src={retrievalFilePreviewUrl} alt="Reference query" />
+                  )
                 ) : (
                   <div className="retrievalItemPlaceholder">
                     Add a query image to preview it here.
                   </div>
                 )}
-                {String(locateOrbStats?.query_fingerprint_data_url || '').trim() ? (
+                {String(displayedLocateOrbStats?.query_fingerprint_data_url || '').trim() ? (
                   <img
                     className="orbPopupFingerprint"
-                    src={locateOrbStats.query_fingerprint_data_url}
+                    src={displayedLocateOrbStats.query_fingerprint_data_url}
                     alt="Query ORB fingerprint"
                   />
                 ) : null}
@@ -2105,14 +2530,32 @@ function App() {
                     model {locateModelLabel}
                   </span>
                   <span className="orbStatChip">
-                    ORB top {Math.max(1, Number(locateOrbTopN) || 100)}
+                    ORB top {Math.max(1, Number(displayedLocateOrbStats?.top_n || locateOrbTopN) || 100)}
                   </span>
                   <span className="orbStatChip">
-                    weight {formatMetric(locateOrbWeight, 2)}
+                    weight {formatMetric(displayedLocateOrbStats?.weight || locateOrbWeight, 2)}
+                  </span>
+                  <span className="orbStatChip">
+                    features {locateOrbResolvedFeatureCount}
                   </span>
                   {locateOrbMaskPercent > 0 ? (
                     <span className="orbStatChip">
                       lower mask {locateOrbMaskPercent}%
+                    </span>
+                  ) : null}
+                  {locateOrbPopupPhase === 'processing' && locateOrbCandidateCount > 0 ? (
+                    <span className="orbStatChip">
+                      done {locateOrbProcessedCandidates}/{locateOrbCandidateCount}
+                    </span>
+                  ) : null}
+                  {locateSam2CarsEnabled ? (
+                    <span className="orbStatChip">
+                      SAM 2 cars {locateSam2VehicleBoxes > 0 ? locateSam2VehicleBoxes : 0}
+                    </span>
+                  ) : null}
+                  {locateSam2TreesEnabled ? (
+                    <span className="orbStatChip">
+                      trees {locateSam2TreeBoxes > 0 ? locateSam2TreeBoxes : 0}
                     </span>
                   ) : null}
                 </div>
@@ -2122,6 +2565,27 @@ function App() {
                     : locateOrbPopupTitle}
                 </div>
                 <div className="orbPopupStageSummary">{locateOrbPopupStageSummary}</div>
+                {locateOrbPopupPhase === 'processing' &&
+                liveLocateComparison &&
+                String(liveLocateComparison.web_path || '').trim() ? (
+                  <button
+                    className="orbPopupCurrentCandidate"
+                    onClick={() => focusRetrievalResult(liveLocateComparison)}
+                  >
+                    <div className="orbLabEyebrow">Current candidate</div>
+                    <img
+                      src={liveLocateComparison.web_path}
+                      alt={`Current candidate ${liveLocateComparison.capture_id}`}
+                    />
+                    <div className="orbChipRow">
+                      <span className="orbStatChip">capture {Number(liveLocateComparison.capture_id || 0)}</span>
+                      <span className="orbStatChip">before #{Number(liveLocateComparison.rank_before || 0)}</span>
+                    </div>
+                    <span>
+                      vector {formatMetric(liveLocateComparison.score_before)} | similarity {formatMetric(liveLocateComparison.similarity)}
+                    </span>
+                  </button>
+                ) : null}
                 <div className="orbPopupTimeline">
                   {orbPopupMoments.map((moment, index) => (
                     <div
@@ -2139,14 +2603,63 @@ function App() {
                 </div>
               </div>
             </div>
+            {locateOrbPopupPhase === 'processing' && liveLocateComparison ? (
+              <div className="orbPopupResults orbPopupLiveResults">
+                <div className="orbPopupResultsHeader">
+                  <div>
+                    <div className="orbLabEyebrow">Live backend comparison</div>
+                    <div className="hint">
+                      Candidate {Math.max(1, locateOrbProcessedCandidates)} of {Math.max(1, locateOrbCandidateCount || Number(displayedLocateOrbStats?.top_n || locateOrbTopN) || 1)}
+                    </div>
+                  </div>
+                  <div className="orbChipRow">
+                    <span className="orbStatChip">before #{Number(liveLocateComparison.rank_before || 0)}</span>
+                    <span className="orbStatChip">ORB {formatMetric(liveLocateComparison.orb_score)}</span>
+                    <span className="orbStatChip">{Number(liveLocateComparison.orb_good_matches || 0)} matches</span>
+                  </div>
+                </div>
+                <div className="orbComparisonGrid orbComparisonGridPopup orbPopupLiveComparisonGrid">
+                  <button
+                    key={`live-${liveLocateComparison.capture_id}`}
+                    className="orbComparisonCard"
+                    onClick={() => focusRetrievalResult(liveLocateComparison)}
+                  >
+                    {String(liveLocateComparison.visualization_data_url || '').trim() ? (
+                      <img
+                        src={liveLocateComparison.visualization_data_url}
+                        alt={`Live ORB comparison ${liveLocateComparison.capture_id}`}
+                      />
+                    ) : (
+                      <div className="retrievalItemPlaceholder">
+                        Live comparison still rendering
+                      </div>
+                    )}
+                    <div className="orbChipRow">
+                      <span className="orbStatChip">Match overlay</span>
+                      <span className="orbStatChip">after #{Number(liveLocateComparison.rank_after || 0)}</span>
+                    </div>
+                    <span>
+                      {Number(liveLocateComparison.orb_good_matches || 0)} good matches | {Number(liveLocateComparison.orb_inliers || 0)} inliers
+                    </span>
+                    <span>
+                      visualized {Number(liveLocateComparison.visual_match_count || 0)} match lines
+                    </span>
+                    <span>
+                      mean match distance {formatMetric(liveLocateComparison.orb_mean_match_distance || 0, 1)}
+                    </span>
+                  </button>
+                </div>
+              </div>
+            ) : null}
             {locateOrbPopupPhase === 'results' ? (
               hasLocateOrbComparisons ? (
                 <div className="orbPopupResults">
                   <div className="orbPopupResultsHeader">
                     <div className="orbChipRow">
-                      <span className="orbStatChip">scored {Number(locateOrbStats?.candidates_scored || 0)}</span>
-                      <span className="orbStatChip">RANSAC {Number(locateOrbStats?.ransac_checked || 0)}</span>
-                      <span className="orbStatChip">query kp {Number(locateOrbStats?.query_keypoints || 0)}</span>
+                      <span className="orbStatChip">scored {Number(displayedLocateOrbStats?.candidates_scored || 0)}</span>
+                      <span className="orbStatChip">RANSAC {Number(displayedLocateOrbStats?.ransac_checked || 0)}</span>
+                      <span className="orbStatChip">query kp {Number(displayedLocateOrbStats?.query_keypoints || 0)}</span>
+                      <span className="orbStatChip">features {locateOrbResolvedFeatureCount}</span>
                     </div>
                     <button
                       className="ghost"
@@ -2183,6 +2696,9 @@ function App() {
                         <span>
                           {Number(comparison.orb_good_matches || 0)} good matches | {Number(comparison.visual_match_count || 0)} lines shown
                         </span>
+                        <span>
+                          mean match distance {formatMetric(comparison.orb_mean_match_distance || 0, 1)}
+                        </span>
                       </button>
                     ))}
                   </div>
@@ -2191,8 +2707,8 @@ function App() {
                 <div className="orbEmptyState">
                   <div className="orbLabEyebrow">No ORB visuals this time</div>
                   <div className="hint">
-                    {locateOrbStats?.reason
-                      ? `The ORB stage reported: ${locateOrbStats.reason}.`
+                    {displayedLocateOrbStats?.reason
+                      ? `The ORB stage reported: ${displayedLocateOrbStats.reason}.`
                       : 'This locate run did not produce comparison overlays.'}
                   </div>
                 </div>
