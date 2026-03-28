@@ -4,6 +4,10 @@ Open Geo Spy is an open-source street-view collection + image search stack. Insp
 
 Current public dataset release is San Francisco-focused and includes multi-million capture embeddings for search.
 
+## Demo
+
+[Watch the demo video](./demo.mp4)
+
 ## Quick Start
 
 ### 1) Clone and install
