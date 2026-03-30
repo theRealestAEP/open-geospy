@@ -8,6 +8,8 @@ Current public dataset release is San Francisco-focused and includes multi-milli
 
 [Watch the demo video](./demo.mp4)
 
+NOTE ORB SEARCH WIll NOT WORK WITHOUT THE IMAGE DATA SET
+
 ## Quick Start
 
 ### 1) Clone and install
