@@ -28,6 +28,7 @@ const retrievalControlHelp = {
   locate_top_k: 'How many location families to return in Locate mode. The ORB gallery uses the same count for compared capture images.',
   min_similarity: 'Optional floor for match similarity. Higher values are stricter and may reduce recall.',
   embedding_base: 'Choose which embedding set this action uses.',
+  locate_battlefront_mode: 'Play a cinematic map reveal after a successful locate, with a progressive zoom from regional scale down to the matched street.',
   locate_orb_enabled: 'Run ORB local-feature reranking on the top vector candidates before panorama aggregation.',
   locate_orb_top_n: 'How many top vector candidates should be reranked with ORB.',
   locate_orb_weight: 'How strongly the ORB score boosts the vector score during locate reranking.',
@@ -45,6 +46,12 @@ const orbPopupMoments = [
   'Testing the strongest alignments for geometric consistency.'
 ];
 const orbPopupPreviewStages = ['keypoints', 'scan', 'link', 'geometry'];
+const locateBattlefrontAudioPath = '/assets/loading.mp3';
+const locateBattlefrontStageLineDurationMs = 3000;
+const locateBattlefrontStagePauseMs = 700;
+const locateBattlefrontStageZoomDurationSeconds = 1.9;
+const locateBattlefrontStageSettleMs = 260;
+const locateBattlefrontRevealStartDelayMs = 1000;
 const orbPopupPreviewPoints = [
   { x: 14, y: 18, delay: 0.1 },
   { x: 31, y: 24, delay: 0.35 },
@@ -61,6 +68,71 @@ const orbPopupPreviewPoints = [
   { x: 74, y: 66, delay: 0.7 },
   { x: 86, y: 54, delay: 1.05 }
 ];
+const locateBattlefrontRevealStageBlueprints = [
+  {
+    key: 'acquiring',
+    label: 'Country lock',
+    title: 'Country lock acquired',
+    subtitle: 'Resolving the winning family inside a national-scale tactical grid.',
+    zoom: 5,
+    lineDurationMs: locateBattlefrontStageLineDurationMs,
+    pauseAfterLinesMs: locateBattlefrontStagePauseMs,
+    zoomDurationSeconds: locateBattlefrontStageZoomDurationSeconds,
+    settleMs: locateBattlefrontStageSettleMs
+  },
+  {
+    key: 'approach',
+    label: 'State corridor',
+    title: 'State corridor resolved',
+    subtitle: 'Compressing the search volume into a state-level ingress lane.',
+    zoom: 8,
+    lineDurationMs: locateBattlefrontStageLineDurationMs,
+    pauseAfterLinesMs: locateBattlefrontStagePauseMs,
+    zoomDurationSeconds: locateBattlefrontStageZoomDurationSeconds,
+    settleMs: locateBattlefrontStageSettleMs
+  },
+  {
+    key: 'descent',
+    label: 'City / county',
+    title: 'City / county descent',
+    subtitle: 'Tightening the corridor onto the metro and county grid.',
+    zoom: 12,
+    lineDurationMs: locateBattlefrontStageLineDurationMs,
+    pauseAfterLinesMs: locateBattlefrontStagePauseMs,
+    zoomDurationSeconds: locateBattlefrontStageZoomDurationSeconds,
+    settleMs: locateBattlefrontStageSettleMs
+  },
+  {
+    key: 'terminal',
+    label: 'Location lock',
+    title: 'Location lock',
+    subtitle: 'Finalizing the recovered panorama and committing the street position.',
+    zoom: 21,
+    lineDurationMs: locateBattlefrontStageLineDurationMs,
+    pauseAfterLinesMs: locateBattlefrontStagePauseMs,
+    zoomDurationSeconds: locateBattlefrontStageZoomDurationSeconds,
+    settleMs: locateBattlefrontStageSettleMs
+  }
+];
+const locateBattlefrontRevealStages = [];
+let locateBattlefrontRevealCursorMs = 0;
+locateBattlefrontRevealStageBlueprints.forEach((stage) => {
+  const zoomDelayMs = Number(stage.lineDurationMs || 0) + Number(stage.pauseAfterLinesMs || 0);
+  const stageDurationMs =
+    zoomDelayMs + Math.round(Number(stage.zoomDurationSeconds || 0) * 1000) + Number(stage.settleMs || 0);
+  locateBattlefrontRevealStages.push({
+    ...stage,
+    at: locateBattlefrontRevealCursorMs,
+    lineLeadMs: zoomDelayMs,
+    zoomDelayMs,
+    duration: Number(stage.zoomDurationSeconds || 0),
+    stageDurationMs
+  });
+  locateBattlefrontRevealCursorMs += stageDurationMs;
+});
+const locateBattlefrontLockDelayMs = locateBattlefrontRevealCursorMs;
+const locateBattlefrontClearDelayMs = locateBattlefrontLockDelayMs + 1800;
+const locateBattlefrontSearchZoomDurationMs = 4400;
 
 function buildLocatePipelineStages(activeKey = 'vector_search', status = 'running') {
   const stageOrder = [
@@ -100,6 +172,11 @@ function formatRetrievalModelLabel(modelName, modelVersion) {
 function formatMetric(value, digits = 3) {
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric.toFixed(digits) : '0.000';
+}
+
+function formatCoordinate(value, digits = 5) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric.toFixed(digits) : 'n/a';
 }
 
 function createClientRetrievalId() {
@@ -242,6 +319,7 @@ function App() {
   const polygonDraftVertexLayerRef = useRef(null);
   const locateOrbPopupSuppressedRef = useRef(false);
   const locateRequestAbortRef = useRef(null);
+  const locateBattlefrontTimeoutsRef = useRef([]);
   const currentPathRef = useRef(location.pathname);
   const pointModeButtonRef = useRef(null);
   const polygonModeButtonRef = useRef(null);
@@ -254,6 +332,14 @@ function App() {
   const activeScanIdRef = useRef(null);
   const trackedScanIdsRef = useRef([]);
   const markerRendererRef = useRef(null);
+  const battlefrontMapModeActiveRef = useRef(false);
+  const battlefrontMarkersHiddenRef = useRef(false);
+  const locateBattlefrontAudioRef = useRef(null);
+  const locateBattlefrontAudioStopTimeoutRef = useRef(null);
+  const locateBattlefrontSearchStartedAtRef = useRef(0);
+  const locateBattlefrontSearchReadyPromiseRef = useRef(Promise.resolve());
+  const locateBattlefrontSearchReadyTimeoutRef = useRef(null);
+  const locateBattlefrontSearchMoveEndHandlerRef = useRef(null);
 
   const [geojsonData, setGeojsonData] = useState(null);
   const [stats, setStats] = useState({ total_panoramas: 0, total_captures: 0, bounds: null });
@@ -287,6 +373,7 @@ function App() {
   const [retrievalResults, setRetrievalResults] = useState([]);
   const [topSearchCaptureId, setTopSearchCaptureId] = useState(null);
   const [locateTopK, setLocateTopK] = useState(8);
+  const [locateBattlefrontModeEnabled, setLocateBattlefrontModeEnabled] = useState(false);
   const [locateOrbEnabled, setLocateOrbEnabled] = useState(false);
   const [locateOrbTopN, setLocateOrbTopN] = useState(100);
   const [locateOrbWeight, setLocateOrbWeight] = useState(0.75);
@@ -309,6 +396,7 @@ function App() {
   const [locateOrbPopupMoment, setLocateOrbPopupMoment] = useState(0);
   const [locateProgressId, setLocateProgressId] = useState('');
   const [locateLiveProgress, setLocateLiveProgress] = useState(null);
+  const [locateBattlefrontSequence, setLocateBattlefrontSequence] = useState(null);
   const [searchEmbeddingBase, setSearchEmbeddingBase] = useState('');
   const [locateEmbeddingBase, setLocateEmbeddingBase] = useState('');
   const [retrievalEmbeddingBaseOptions, setRetrievalEmbeddingBaseOptions] = useState([
@@ -327,6 +415,28 @@ function App() {
   const isSearchPage = location.pathname === '/search';
   const isLocatePage = location.pathname === '/locate';
   const currentWorkerLimit = scanForm.mode === 'modal' ? 100 : 32;
+  const battlefrontMapModeActive =
+    isLocatePage && Boolean(locateBattlefrontModeEnabled && (locateBusy || locateBattlefrontSequence));
+  const battlefrontMarkersHidden = battlefrontMapModeActive;
+
+  useEffect(() => {
+    battlefrontMapModeActiveRef.current = battlefrontMapModeActive;
+    battlefrontMarkersHiddenRef.current = battlefrontMarkersHidden;
+    if (!battlefrontMarkersHidden) {
+      return;
+    }
+    if (viewportDebounceRef.current) {
+      window.clearTimeout(viewportDebounceRef.current);
+      viewportDebounceRef.current = null;
+    }
+    if (viewportAbortRef.current) {
+      viewportAbortRef.current.abort();
+      viewportAbortRef.current = null;
+    }
+    if (markersRef.current) {
+      markersRef.current.clearLayers();
+    }
+  }, [battlefrontMapModeActive, battlefrontMarkersHidden]);
 
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
@@ -700,6 +810,12 @@ function App() {
     });
 
     const scheduleViewportRefresh = (delayMs = 220) => {
+      if (battlefrontMapModeActiveRef.current) {
+        if (markersRef.current) {
+          markersRef.current.clearLayers();
+        }
+        return;
+      }
       if (viewportDebounceRef.current) {
         clearTimeout(viewportDebounceRef.current);
       }
@@ -731,10 +847,196 @@ function App() {
     currentPathRef.current = location.pathname;
   }, [location.pathname]);
 
+  const stopLocateBattlefrontAudio = (options = {}) => {
+    const { reset = true } = options;
+    if (locateBattlefrontAudioStopTimeoutRef.current) {
+      window.clearTimeout(locateBattlefrontAudioStopTimeoutRef.current);
+      locateBattlefrontAudioStopTimeoutRef.current = null;
+    }
+    const audio = locateBattlefrontAudioRef.current;
+    if (!audio) return;
+    audio.pause();
+    if (reset) {
+      try {
+        audio.currentTime = 0;
+      } catch (error) {
+        console.debug('battlefront audio reset failed', error);
+      }
+    }
+  };
+
+  const playLocateBattlefrontAudio = (playbackMs = 0) => {
+    if (typeof window === 'undefined' || typeof Audio === 'undefined') {
+      return;
+    }
+    let audio = locateBattlefrontAudioRef.current;
+    if (!audio) {
+      audio = new Audio(locateBattlefrontAudioPath);
+      audio.preload = 'auto';
+      audio.loop = false;
+      audio.volume = 0.72;
+      locateBattlefrontAudioRef.current = audio;
+    }
+    if (locateBattlefrontAudioStopTimeoutRef.current) {
+      window.clearTimeout(locateBattlefrontAudioStopTimeoutRef.current);
+      locateBattlefrontAudioStopTimeoutRef.current = null;
+    }
+    audio.pause();
+    try {
+      audio.currentTime = 0;
+    } catch (error) {
+      console.debug('battlefront audio seek failed', error);
+    }
+    void audio.play().catch((error) => {
+      console.debug('battlefront audio playback blocked', error);
+    });
+    const normalizedPlaybackMs = Math.max(0, Number(playbackMs || 0));
+    if (normalizedPlaybackMs > 0) {
+      locateBattlefrontAudioStopTimeoutRef.current = window.setTimeout(() => {
+        const activeAudio = locateBattlefrontAudioRef.current;
+        if (!activeAudio) return;
+        activeAudio.pause();
+        try {
+          activeAudio.currentTime = 0;
+        } catch (error) {
+          console.debug('battlefront audio stop failed', error);
+        }
+        locateBattlefrontAudioStopTimeoutRef.current = null;
+      }, normalizedPlaybackMs);
+    }
+  };
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof Audio === 'undefined') {
+      return undefined;
+    }
+    const audio = new Audio(locateBattlefrontAudioPath);
+    audio.preload = 'auto';
+    audio.loop = false;
+    audio.volume = 0.72;
+    audio.load();
+    locateBattlefrontAudioRef.current = audio;
+    return () => {
+      if (locateBattlefrontAudioStopTimeoutRef.current) {
+        window.clearTimeout(locateBattlefrontAudioStopTimeoutRef.current);
+        locateBattlefrontAudioStopTimeoutRef.current = null;
+      }
+      audio.pause();
+      try {
+        audio.currentTime = 0;
+      } catch (error) {
+        console.debug('battlefront audio cleanup failed', error);
+      }
+      if (locateBattlefrontAudioRef.current === audio) {
+        locateBattlefrontAudioRef.current = null;
+      }
+    };
+  }, []);
+
+  const clearLocateBattlefrontSequence = (options = {}) => {
+    locateBattlefrontTimeoutsRef.current.forEach((timeoutId) => {
+      window.clearTimeout(timeoutId);
+    });
+    locateBattlefrontTimeoutsRef.current = [];
+    if (locateBattlefrontSearchReadyTimeoutRef.current) {
+      window.clearTimeout(locateBattlefrontSearchReadyTimeoutRef.current);
+      locateBattlefrontSearchReadyTimeoutRef.current = null;
+    }
+    if (
+      mapRef.current &&
+      locateBattlefrontSearchMoveEndHandlerRef.current &&
+      typeof mapRef.current.off === 'function'
+    ) {
+      mapRef.current.off('moveend', locateBattlefrontSearchMoveEndHandlerRef.current);
+      locateBattlefrontSearchMoveEndHandlerRef.current = null;
+    }
+    locateBattlefrontSearchReadyPromiseRef.current = Promise.resolve();
+    if (options.stopMap && mapRef.current && typeof mapRef.current.stop === 'function') {
+      mapRef.current.stop();
+    }
+    if (!options.keepAudio) {
+      stopLocateBattlefrontAudio();
+    }
+    setLocateBattlefrontSequence(null);
+  };
+
+  const queueLocateBattlefrontStep = (delayMs, callback) => {
+    const timeoutId = window.setTimeout(callback, delayMs);
+    locateBattlefrontTimeoutsRef.current.push(timeoutId);
+  };
+
+  const waitForLocateBattlefrontSearchReady = async () => {
+    const ready = locateBattlefrontSearchReadyPromiseRef.current;
+    if (ready && typeof ready.then === 'function') {
+      await ready;
+    }
+  };
+
+  const beginLocateBattlefrontSearch = () => {
+    const map = mapRef.current;
+    if (!map) return;
+    clearLocateBattlefrontSequence({ stopMap: true });
+    locateBattlefrontSearchStartedAtRef.current = performance.now();
+    locateBattlefrontSearchReadyPromiseRef.current = new Promise((resolve) => {
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        if (
+          map &&
+          locateBattlefrontSearchMoveEndHandlerRef.current &&
+          typeof map.off === 'function'
+        ) {
+          map.off('moveend', locateBattlefrontSearchMoveEndHandlerRef.current);
+        }
+        locateBattlefrontSearchMoveEndHandlerRef.current = null;
+        if (locateBattlefrontSearchReadyTimeoutRef.current) {
+          window.clearTimeout(locateBattlefrontSearchReadyTimeoutRef.current);
+          locateBattlefrontSearchReadyTimeoutRef.current = null;
+        }
+        resolve();
+      };
+      const handleMoveEnd = () => {
+        window.setTimeout(finish, 180);
+      };
+      locateBattlefrontSearchMoveEndHandlerRef.current = handleMoveEnd;
+      if (typeof map.once === 'function') {
+        map.once('moveend', handleMoveEnd);
+      }
+      locateBattlefrontSearchReadyTimeoutRef.current = window.setTimeout(
+        finish,
+        locateBattlefrontSearchZoomDurationMs + 700
+      );
+    });
+    const center = map.getCenter();
+    setLocateBattlefrontSequence({
+      phase: 'searching',
+      title: 'Scanning planetary archive',
+      subtitle: 'Preparing a wide-area vector sweep before the landing lock begins.',
+      targetLabel: 'pending lock',
+      previewPath: '',
+      familyScore: 0,
+      lat: center.lat,
+      lon: center.lng,
+      stepIndex: 0,
+      lineLeadMs: 0,
+      lineDurationMs: 0,
+      linePauseMs: 0,
+      zoomDurationMs: 0,
+      isZooming: false
+    });
+    map.flyTo([center.lat, center.lng], 2, {
+      animate: true,
+      duration: 3.9,
+      easeLinearity: 0.1
+    });
+  };
+
   useEffect(() => {
     if (isLocatePage) {
       return;
     }
+    clearLocateBattlefrontSequence({ stopMap: true });
     locateOrbPopupSuppressedRef.current = true;
     setLocateOrbPopupOpen(false);
     setLocateOrbPopupPhase('idle');
@@ -904,10 +1206,23 @@ function App() {
     const { forceStats = true, refreshViewport = true } = options;
     try {
       const map = mapRef.current;
-      if (refreshViewport && map) {
+      const currentBattlefrontMapModeActive = battlefrontMapModeActiveRef.current;
+      const currentBattlefrontMarkersHidden = battlefrontMarkersHiddenRef.current;
+      if (refreshViewport && map && !currentBattlefrontMarkersHidden) {
         const bounds = map.getBounds();
         const zoom = Math.max(1, Math.round(map.getZoom()));
-        const pointLimit = zoom >= 18 ? 5000 : zoom >= 16 ? 3200 : 1800;
+        const pointLimit = currentBattlefrontMapModeActive
+          ? zoom >= 16
+            ? 5000
+            : zoom >= 12
+              ? 4200
+              : 3200
+          : zoom >= 18
+            ? 5000
+            : zoom >= 16
+              ? 3200
+              : 1800;
+        const clusterZoomThreshold = currentBattlefrontMapModeActive ? 0 : 16;
         const params = new URLSearchParams({
           min_lat: String(bounds.getSouth()),
           min_lon: String(bounds.getWest()),
@@ -915,7 +1230,7 @@ function App() {
           max_lon: String(bounds.getEast()),
           zoom: String(zoom),
           limit: String(pointLimit),
-          cluster_zoom_threshold: '16'
+          cluster_zoom_threshold: String(clusterZoomThreshold)
         });
         if (viewportAbortRef.current) {
           viewportAbortRef.current.abort();
@@ -928,9 +1243,9 @@ function App() {
         if (!panoRes.ok) {
           throw new Error(`bbox fetch failed (${panoRes.status})`);
         }
-      const geo = await panoRes.json();
-      setGeojsonData(geo);
-      renderMarkers(geo);
+        const geo = await panoRes.json();
+        setGeojsonData(geo);
+        renderMarkers(geo);
       }
 
       if (forceStats) {
@@ -957,9 +1272,20 @@ function App() {
     }
   };
 
+  useEffect(() => {
+    if (!mapRef.current) return;
+    if (battlefrontMarkersHidden && markersRef.current) {
+      markersRef.current.clearLayers();
+      return;
+    }
+    loadData({ forceStats: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [battlefrontMapModeActive, battlefrontMarkersHidden]);
+
   const renderMarkers = (geojson) => {
     if (!markersRef.current) return;
     markersRef.current.clearLayers();
+    if (battlefrontMarkersHiddenRef.current) return;
     const features = geojson?.features || [];
     if (!features.length) return;
     const renderer = markerRendererRef.current || undefined;
@@ -1417,13 +1743,18 @@ function App() {
     setLocateOrbStats(null);
     setLocateOrbComparisons([]);
     setLocateOrbPopupMoment(0);
+    clearLocateBattlefrontSequence({ stopMap: true });
     locateOrbPopupSuppressedRef.current = false;
     clearSearchFallbackMarker();
     setLocatePipeline({ stages: buildLocatePipelineStages('vector_search', 'running') });
     setLocateStatus(
       locateOrbEnabled ? 'Locating image with ORB rerank...' : 'Locating image...'
     );
-    if (locateOrbEnabled && locateOrbPopupEnabled) {
+    if (locateBattlefrontModeEnabled) {
+      beginLocateBattlefrontSearch();
+      setLocateOrbPopupOpen(false);
+      setLocateOrbPopupPhase('idle');
+    } else if (locateOrbEnabled && locateOrbPopupEnabled) {
       setLocateOrbPopupOpen(true);
       setLocateOrbPopupPhase('processing');
     } else {
@@ -1486,6 +1817,7 @@ function App() {
         setTopLocateFamilyId(null);
         setLocateOrbStats(null);
         setLocateOrbComparisons([]);
+        clearLocateBattlefrontSequence({ stopMap: true });
         setLocatePipeline({ stages: buildLocatePipelineStages('vector_search', 'failed') });
         setLocateOrbPopupPhase('error');
         return;
@@ -1504,18 +1836,50 @@ function App() {
           ? pipelineStages
           : buildLocatePipelineStages('family_rank', 'completed')
       });
-      if (matches.length) {
-        await focusRetrievalResult(matches[0]);
-      }
       const modelLabel = formatRetrievalModelLabel(body.model_name, body.model_version);
       setLocateStatus(
         `Found ${matches.length} location families from ${Number(body.capture_candidates || 0)} capture candidates${locateOrbEnabled ? ` with ORB top ${Math.max(1, Number(locateOrbTopN) || 100)}` : ''}${modelLabel ? ` (${modelLabel})` : ''}.`
       );
-      if (locateOrbEnabled && locateOrbPopupEnabled && !locateOrbPopupSuppressedRef.current) {
-        setLocateOrbPopupOpen(true);
-        setLocateOrbPopupPhase('results');
+      const shouldPlayBattlefrontReveal = locateBattlefrontModeEnabled && matches.length > 0;
+      const shouldOpenOrbPopupOnFinish =
+        locateOrbEnabled && locateOrbPopupEnabled && !locateOrbPopupSuppressedRef.current;
+      if (shouldPlayBattlefrontReveal) {
+        setLocateOrbPopupOpen(false);
+        setLocateOrbPopupPhase(shouldOpenOrbPopupOnFinish ? 'results' : 'idle');
+        const startReveal = async () => {
+          await waitForLocateBattlefrontSearchReady();
+          if (currentPathRef.current !== '/locate') {
+            return;
+          }
+          await new Promise((resolve) => {
+            window.setTimeout(resolve, locateBattlefrontRevealStartDelayMs);
+          });
+          if (currentPathRef.current !== '/locate') {
+            return;
+          }
+          void startLocateBattlefrontReveal(matches[0], {
+            onComplete: () => {
+              if (shouldOpenOrbPopupOnFinish && !locateOrbPopupSuppressedRef.current) {
+                setLocateOrbPopupPhase('results');
+                setLocateOrbPopupOpen(true);
+              }
+            }
+          });
+        };
+        void startReveal();
       } else {
-        setLocateOrbPopupPhase('idle');
+        if (locateBattlefrontModeEnabled) {
+          clearLocateBattlefrontSequence({ stopMap: true });
+        }
+        if (matches.length) {
+          await focusRetrievalResult(matches[0]);
+        }
+        if (shouldOpenOrbPopupOnFinish) {
+          setLocateOrbPopupOpen(true);
+          setLocateOrbPopupPhase('results');
+        } else {
+          setLocateOrbPopupPhase('idle');
+        }
       }
       await loadRetrievalStats();
     } catch (error) {
@@ -1527,6 +1891,7 @@ function App() {
       setTopLocateFamilyId(null);
       setLocateOrbStats(null);
       setLocateOrbComparisons([]);
+      clearLocateBattlefrontSequence({ stopMap: true });
       setLocatePipeline({ stages: buildLocatePipelineStages('vector_search', 'failed') });
       setLocateOrbPopupPhase('error');
     } finally {
@@ -1537,14 +1902,144 @@ function App() {
     }
   };
 
-  const focusRetrievalResult = async (result) => {
+  const startLocateBattlefrontReveal = async (result, options = {}) => {
+    const map = mapRef.current;
+    const lat = Number(result?.lat ?? result?.family_center_lat);
+    const lon = Number(result?.lon ?? result?.family_center_lon);
+    if (!map || !Number.isFinite(lat) || !Number.isFinite(lon)) {
+      await focusRetrievalResult(result);
+      if (typeof options.onComplete === 'function') {
+        options.onComplete();
+      }
+      return;
+    }
+
+    clearLocateBattlefrontSequence({ stopMap: true });
+    clearSearchFallbackMarker();
+
+    const targetLabel = String(result?.pano_id || '').trim()
+      ? `pano ${String(result.pano_id).trim()}`
+      : result?.family_id != null
+        ? `family ${result.family_id}`
+        : 'matched landing zone';
+    const previewPath = String(result?.web_path || '').trim();
+    const familyScore = Number(result?.family_score || 0);
+
+    locateBattlefrontRevealStages.forEach((stage, index) => {
+      const runStage = () => {
+        setLocateBattlefrontSequence({
+          phase: stage.key,
+          title: stage.title,
+          subtitle: stage.subtitle,
+          targetLabel,
+          previewPath,
+          familyScore: Number.isFinite(familyScore) ? familyScore : 0,
+          lat,
+          lon,
+          stepIndex: index + 1,
+          lineLeadMs: Number(stage.lineLeadMs || 0),
+          lineDurationMs: Number(stage.lineDurationMs || 0),
+          linePauseMs: Number(stage.pauseAfterLinesMs || 0),
+          zoomDurationMs: Math.max(0, Math.round(Number(stage.duration || 0) * 1000)),
+          isZooming: false
+        });
+        queueLocateBattlefrontStep(Number(stage.zoomDelayMs || stage.lineLeadMs || 0), () => {
+          playLocateBattlefrontAudio(
+            Math.max(
+              0,
+              Math.round(Number(stage.duration || 0) * 1000) + Number(stage.settleMs || 0)
+            )
+          );
+          setLocateBattlefrontSequence((prev) =>
+            prev && prev.phase === stage.key
+              ? {
+                  ...prev,
+                  isZooming: true
+                }
+              : prev
+          );
+          if (typeof map.stop === 'function') {
+            map.stop();
+          }
+          map.flyTo([lat, lon], stage.zoom, {
+            animate: true,
+            duration: stage.duration,
+            easeLinearity: 0.12
+          });
+        });
+      };
+      if (stage.at <= 0) {
+        runStage();
+      } else {
+        queueLocateBattlefrontStep(stage.at, runStage);
+      }
+    });
+
+    queueLocateBattlefrontStep(locateBattlefrontLockDelayMs, () => {
+      if (typeof map.stop === 'function') {
+        map.stop();
+      }
+      setLocateBattlefrontSequence((prev) =>
+        prev
+          ? {
+              ...prev,
+              phase: 'locked',
+              title: 'Landing solution confirmed',
+              subtitle: 'Locate target committed to the map and preview dock.',
+              lineLeadMs: 0,
+              lineDurationMs: 0,
+              linePauseMs: 0,
+              zoomDurationMs: 0,
+              isZooming: false
+            }
+          : null
+      );
+      void focusRetrievalResult(result, {
+        keepBattlefrontReveal: true,
+        skipMapMove: true,
+        skipPreview: true,
+        preferredZoom: Math.max(
+          20,
+          Number(locateBattlefrontRevealStages[locateBattlefrontRevealStages.length - 1]?.zoom || 20)
+        )
+      });
+      if (typeof options.onComplete === 'function') {
+        options.onComplete();
+      }
+    });
+
+    queueLocateBattlefrontStep(locateBattlefrontClearDelayMs, () => {
+      clearLocateBattlefrontSequence();
+    });
+  };
+
+  const focusRetrievalResult = async (result, options = {}) => {
+    const {
+      skipMapMove = false,
+      keepBattlefrontReveal = false,
+      preferredZoom = null,
+      skipPreview = false
+    } = options;
+    if (!keepBattlefrontReveal) {
+      clearLocateBattlefrontSequence({ stopMap: true });
+    }
     const map = mapRef.current;
     const lat = Number(result?.lat ?? result?.family_center_lat);
     const lon = Number(result?.lon ?? result?.family_center_lon);
     const hasLocalImage = Boolean(String(result?.web_path || '').trim());
     clearSearchFallbackMarker();
     if (map && Number.isFinite(lat) && Number.isFinite(lon)) {
-      map.setView([lat, lon], Math.max(16, map.getZoom()));
+      if (!skipMapMove) {
+        if (typeof map.stop === 'function') {
+          map.stop();
+        }
+        const resolvedZoom = Number.isFinite(Number(preferredZoom))
+          ? Number(preferredZoom)
+          : Math.max(16, map.getZoom());
+        map.setView([lat, lon], resolvedZoom, {
+          animate: false
+        });
+      }
       const streetViewUrl = buildStreetViewUrl(result);
       const marker = L.circleMarker([lat, lon], {
         radius: 7,
@@ -1569,7 +2064,7 @@ function App() {
       }
       searchFallbackMarkerRef.current = marker;
     }
-    if (result?.panorama_id != null) {
+    if (!skipPreview && result?.panorama_id != null) {
       await showPreview({ id: result.panorama_id, pano_id: result.pano_id || '' });
     }
   };
@@ -1686,6 +2181,78 @@ function App() {
   const locateModelLabel =
     retrievalEmbeddingBaseOptions.find((option) => option.value === locateEmbeddingBase)?.label ||
     String(locateEmbeddingBase || 'active').toUpperCase();
+  const locateBattlefrontStepIndex = Math.max(0, Number(locateBattlefrontSequence?.stepIndex || 0));
+  const locateBattlefrontSearching = locateBattlefrontSequence?.phase === 'searching';
+  const locateBattlefrontHudTitle =
+    locateBattlefrontSearching
+      ? liveLocatePhase === 'vector_search'
+        ? 'Country-scale vector sweep'
+        : liveLocatePhase === 'orb_rerank'
+          ? 'Local feature verification'
+          : liveLocatePhase === 'panorama_rerank'
+            ? 'Panorama merge underway'
+            : liveLocatePhase === 'family_rank'
+              ? 'Locking the landing zone'
+              : 'Scanning planetary archive'
+      : String(locateBattlefrontSequence?.title || '').trim();
+  const locateBattlefrontHudSubtitle =
+    locateBattlefrontSearching
+      ? String(liveLocateProgress?.message || '').trim() ||
+        'Zoomed out while the backend resolves a landing zone from the live locate pipeline.'
+      : String(locateBattlefrontSequence?.subtitle || '').trim();
+  const locateBattlefrontMetaItems = locateBattlefrontSearching
+    ? [
+        `model ${locateModelLabel}`,
+        `phase ${String(formatLocateProgressStageBadge(liveLocatePhase, locateOrbEnabled)).toLowerCase()}`,
+        Number(liveLocateProgress?.vector_candidates || 0) > 0
+          ? `raw ${Number(liveLocateProgress?.vector_candidates || 0)}`
+          : '',
+        locateOrbEnabled && locateOrbCandidateCount > 0
+          ? `orb ${locateOrbProcessedCandidates}/${locateOrbCandidateCount}`
+          : locateOrbEnabled
+            ? 'orb queued'
+            : 'orb off',
+        Number(liveLocateProgress?.panorama_candidates || 0) > 0
+          ? `panos ${Number(liveLocateProgress?.panorama_candidates || 0)}`
+          : '',
+        Number(liveLocateProgress?.matches || 0) > 0
+          ? `families ${Number(liveLocateProgress?.matches || 0)}`
+          : ''
+      ].filter(Boolean)
+    : [
+        `target ${String(locateBattlefrontSequence?.targetLabel || '').trim() || 'pending lock'}`,
+        `lat ${formatCoordinate(locateBattlefrontSequence?.lat)}`,
+        `lon ${formatCoordinate(locateBattlefrontSequence?.lon)}`,
+        `score ${formatMetric(locateBattlefrontSequence?.familyScore)}`
+      ];
+  const locateBattlefrontPreviewLabel = locateBattlefrontSearching ? 'Reference image' : 'Recovered target';
+  const locateBattlefrontPreviewPath =
+    locateBattlefrontSearching
+      ? String(retrievalFilePreviewUrl || '').trim()
+      : String(locateBattlefrontSequence?.previewPath || '').trim();
+  const locateBattlefrontProgressStages = locateBattlefrontSearching
+    ? (locatePipeline.stages || []).map((stage) => ({
+        key: stage.key,
+        label: stage.title,
+        status:
+          String(stage.status || '').toLowerCase() === 'completed'
+            ? 'done'
+            : String(stage.status || '').toLowerCase() === 'running'
+              ? 'active'
+              : String(stage.status || '').toLowerCase() === 'failed'
+                ? 'failed'
+                : ''
+      }))
+    : locateBattlefrontRevealStages.map((stage, index) => ({
+        key: stage.key,
+        label: stage.label,
+        status:
+          locateBattlefrontStepIndex > index + 1
+            ? 'done'
+            : locateBattlefrontStepIndex === index + 1
+              ? 'active'
+              : ''
+      }));
   const locateOrbPopupTitle =
     locateOrbPopupPhase === 'processing'
       ? 'Comparing local feature fingerprints'
@@ -2071,6 +2638,14 @@ function App() {
                 </label>
               </div>
               <div className="grid2">
+                <label className="checkboxLabel locateToggleCard" title={retrievalControlHelp.locate_battlefront_mode}>
+                  <input
+                    type="checkbox"
+                    checked={locateBattlefrontModeEnabled}
+                    onChange={(e) => setLocateBattlefrontModeEnabled(e.target.checked)}
+                  />
+                  Battlefront reveal mode
+                </label>
                 <label title={retrievalControlHelp.locate_orb_enabled}>
                   ORB rerank
                   <input
@@ -2192,6 +2767,7 @@ function App() {
                 <button
                   className="ghost"
                   onClick={() => {
+                    clearLocateBattlefrontSequence({ stopMap: true });
                     setLocateResults([]);
                     setLocateStatus('');
                     setTopLocateFamilyId(null);
@@ -2714,6 +3290,95 @@ function App() {
                 </div>
               )
             ) : null}
+          </div>
+        </div>
+      ) : null}
+      {isLocatePage && locateBattlefrontSequence ? (
+        <div
+          className={`battlefrontReveal battlefrontReveal-${locateBattlefrontSequence.phase}${
+            locateBattlefrontSequence.isZooming ? ' battlefrontReveal-zooming' : ''
+          }`}
+        >
+          <div className="battlefrontRevealShade" />
+          <div className="battlefrontRevealStars" />
+          <div
+            key={`battlefront-grid-${locateBattlefrontSequence.phase}-${Number(locateBattlefrontSequence.stepIndex || 0)}`}
+            className="battlefrontRevealGridField"
+            style={{
+              '--battlefront-line-duration': `${Math.max(0, Number(locateBattlefrontSequence.lineDurationMs || 0))}ms`,
+              '--battlefront-line-horizontal-duration': `${Math.max(
+                0,
+                Math.round(Number(locateBattlefrontSequence.lineDurationMs || 0) * 0.56)
+              )}ms`,
+              '--battlefront-line-vertical-delay': `${Math.max(
+                0,
+                Math.round(Number(locateBattlefrontSequence.lineDurationMs || 0) * 0.56)
+              )}ms`,
+              '--battlefront-line-vertical-duration': `${Math.max(
+                0,
+                Number(locateBattlefrontSequence.lineDurationMs || 0) -
+                  Math.round(Number(locateBattlefrontSequence.lineDurationMs || 0) * 0.56)
+              )}ms`,
+              '--battlefront-zoom-duration': `${Math.max(
+                0,
+                Number(locateBattlefrontSequence.zoomDurationMs || 0)
+              )}ms`
+            }}
+          >
+            <div className="battlefrontRevealGridGlow" />
+            <div className="battlefrontRevealGridPlane battlefrontRevealGridPlane-major" />
+            <div className="battlefrontRevealGridPlane battlefrontRevealGridPlane-minor" />
+            <div className="battlefrontRevealGridWindow" />
+            <div className="battlefrontRevealGridEdge battlefrontRevealGridEdge-top" />
+            <div className="battlefrontRevealGridEdge battlefrontRevealGridEdge-bottom" />
+            <div className="battlefrontRevealGridEdge battlefrontRevealGridEdge-left" />
+            <div className="battlefrontRevealGridEdge battlefrontRevealGridEdge-right" />
+          </div>
+          <div className="battlefrontRevealReticle" />
+          <div className="battlefrontRevealOrbit battlefrontRevealOrbit-a" />
+          <div className="battlefrontRevealOrbit battlefrontRevealOrbit-b" />
+          <div className="battlefrontRevealHud">
+            <div className="battlefrontRevealEyebrow">Battlefront reveal mode</div>
+            <div className="battlefrontRevealTitle">{locateBattlefrontHudTitle}</div>
+            <div className="battlefrontRevealSubtitle">{locateBattlefrontHudSubtitle}</div>
+            <div className="battlefrontRevealProgress">
+              {locateBattlefrontProgressStages.map((stage) => (
+                <div
+                  key={stage.key}
+                  className={`battlefrontRevealProgressItem ${stage.status}`}
+                >
+                  <span className="battlefrontRevealProgressDot" />
+                  <span>{stage.label}</span>
+                </div>
+              ))}
+            </div>
+            <div className="battlefrontRevealMeta">
+              {locateBattlefrontMetaItems.map((item) => (
+                <span key={item}>{item}</span>
+              ))}
+            </div>
+          </div>
+          <div className="battlefrontRevealPreviewCard">
+            <div className="battlefrontRevealPreviewLabel">{locateBattlefrontPreviewLabel}</div>
+            {locateBattlefrontPreviewPath ? (
+              <img
+                src={locateBattlefrontPreviewPath}
+                alt={
+                  locateBattlefrontSearching
+                    ? 'Locate reference image'
+                    : `Locate target ${locateBattlefrontSequence.targetLabel}`
+                }
+              />
+            ) : (
+              <div className="retrievalItemPlaceholder">
+                {locateBattlefrontSearching ? 'Waiting for a landing lock' : 'No local image'}
+                <span>
+                  {locateBattlefrontSearching
+                    ? String(liveLocateProgress?.message || 'Locate pipeline is still resolving the match.')
+                    : locateBattlefrontSequence.targetLabel}
+                </span>
+              </div>
+            )}
           </div>
         </div>
       ) : null}

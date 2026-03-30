@@ -60,6 +60,7 @@ SEEDS_DIR = os.path.join(BASE_DIR, "seeds")
 FRONTEND_DIST_DIR = os.path.join(BASE_DIR, "frontend", "dist")
 FRONTEND_DIST_INDEX = os.path.join(FRONTEND_DIST_DIR, "index.html")
 FRONTEND_DIST_ASSETS = os.path.join(FRONTEND_DIST_DIR, "assets")
+FRONTEND_DIST_FAVICON = os.path.join(FRONTEND_DIST_DIR, "favicon.svg")
 BACKEND_FALLBACK_INDEX = os.path.join(BASE_DIR, "backend", "app", "fallback_index.html")
 CAPTURE_PROFILES = {
     "base": {
@@ -1525,15 +1526,37 @@ async def _dispatch_modal_workers(
     }
 
 
-# ─── Index page ────────────────────────────────────────────────────────────
+# ─── Frontend shell ────────────────────────────────────────────────────────
 
-@app.get("/")
-async def index():
+def _frontend_index_response():
     if os.path.exists(FRONTEND_DIST_INDEX):
         return FileResponse(FRONTEND_DIST_INDEX, media_type="text/html")
     if os.path.exists(BACKEND_FALLBACK_INDEX):
         return FileResponse(BACKEND_FALLBACK_INDEX, media_type="text/html")
     return PlainTextResponse("GeoSpy backend is running, but frontend assets are missing.")
+
+
+@app.get("/")
+async def index():
+    return _frontend_index_response()
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+@app.get("/favicon.svg", include_in_schema=False)
+async def frontend_favicon():
+    if os.path.exists(FRONTEND_DIST_FAVICON):
+        return FileResponse(FRONTEND_DIST_FAVICON, media_type="image/svg+xml")
+    raise HTTPException(status_code=404, detail="Favicon not found")
+
+
+@app.get("/{frontend_path:path}", include_in_schema=False)
+async def frontend_spa_fallback(frontend_path: str):
+    normalized = str(frontend_path or "").lstrip("/")
+    if not normalized:
+        return _frontend_index_response()
+    if normalized.startswith(("api/", "captures/", "assets/")):
+        raise HTTPException(status_code=404, detail="Not found")
+    return _frontend_index_response()
 
 
 def run() -> None:

@@ -444,6 +444,553 @@ button.compact:active:not(:disabled) {
   box-shadow: none;
 }
 
+.battlefrontReveal {
+  position: fixed;
+  inset: 0 360px 0 0;
+  z-index: 1500;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.battlefrontRevealShade,
+.battlefrontRevealStars,
+.battlefrontRevealGridField,
+.battlefrontRevealGridGlow,
+.battlefrontRevealGridPlane,
+.battlefrontRevealGridWindow,
+.battlefrontRevealGridEdge,
+.battlefrontRevealReticle,
+.battlefrontRevealOrbit {
+  position: absolute;
+}
+
+.battlefrontRevealShade {
+  inset: 0;
+  background:
+    radial-gradient(circle at center, rgba(15, 26, 54, 0.1) 0%, rgba(7, 12, 27, 0.44) 58%, rgba(3, 7, 18, 0.72) 100%),
+    linear-gradient(180deg, rgba(4, 8, 20, 0.16) 0%, rgba(4, 8, 20, 0.42) 100%);
+}
+
+.battlefrontRevealStars {
+  inset: -24%;
+  opacity: 0.52;
+  background-image:
+    radial-gradient(2px 2px at 14% 22%, rgba(255, 255, 255, 0.82), transparent 55%),
+    radial-gradient(2px 2px at 28% 68%, rgba(255, 255, 255, 0.64), transparent 55%),
+    radial-gradient(2px 2px at 42% 35%, rgba(255, 255, 255, 0.72), transparent 55%),
+    radial-gradient(3px 3px at 56% 18%, rgba(255, 209, 102, 0.7), transparent 55%),
+    radial-gradient(2px 2px at 74% 30%, rgba(255, 255, 255, 0.7), transparent 55%),
+    radial-gradient(3px 3px at 84% 62%, rgba(93, 255, 204, 0.48), transparent 55%),
+    radial-gradient(2px 2px at 66% 78%, rgba(255, 255, 255, 0.62), transparent 55%);
+  animation: battlefrontStarsDrift 12s linear infinite;
+}
+
+.battlefrontRevealGridField {
+  inset: 0;
+  --battlefront-grid-scale: 3.2;
+  --battlefront-grid-window-size: 92vmin;
+  --battlefront-line-duration: 3000ms;
+  --battlefront-line-horizontal-duration: 1680ms;
+  --battlefront-line-vertical-delay: 1680ms;
+  --battlefront-line-vertical-duration: 1320ms;
+  --battlefront-zoom-duration: 1100ms;
+  opacity: 0.76;
+  transition: opacity 420ms ease;
+}
+
+.battlefrontRevealGridGlow {
+  left: 50%;
+  top: 50%;
+  width: min(110vw, 110vh);
+  height: min(110vw, 110vh);
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(87, 214, 255, 0.14) 0%, rgba(87, 214, 255, 0.06) 28%, rgba(87, 214, 255, 0.02) 45%, transparent 72%);
+  filter: blur(10px);
+}
+
+.battlefrontRevealGridPlane {
+  left: 50%;
+  top: 50%;
+  width: 180vw;
+  height: 180vh;
+  transform: translate(-50%, -50%) scale(var(--battlefront-grid-scale));
+  transform-origin: center;
+  transition:
+    transform 960ms cubic-bezier(0.18, 0.72, 0.18, 1),
+    opacity 420ms ease;
+}
+
+.battlefrontRevealGridPlane-major {
+  opacity: 0.34;
+  background-image:
+    repeating-linear-gradient(90deg, rgba(122, 157, 255, 0.2) 0 2px, transparent 2px 120px),
+    repeating-linear-gradient(180deg, rgba(122, 157, 255, 0.2) 0 2px, transparent 2px 120px);
+}
+
+.battlefrontRevealGridPlane-minor {
+  opacity: 0.18;
+  background-image:
+    repeating-linear-gradient(90deg, rgba(87, 214, 255, 0.12) 0 1px, transparent 1px 28px),
+    repeating-linear-gradient(180deg, rgba(87, 214, 255, 0.12) 0 1px, transparent 1px 28px);
+}
+
+.battlefrontRevealGridWindow {
+  left: 50%;
+  top: 50%;
+  width: var(--battlefront-grid-window-size);
+  height: var(--battlefront-grid-window-size);
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.battlefrontRevealGridEdge {
+  background: linear-gradient(90deg, rgba(255, 209, 102, 0.18), rgba(255, 209, 102, 0.92), rgba(255, 209, 102, 0.18));
+  box-shadow: 0 0 18px rgba(255, 209, 102, 0.22);
+  opacity: 0;
+  animation-fill-mode: both;
+  will-change: transform, opacity;
+  transition:
+    top var(--battlefront-zoom-duration) cubic-bezier(0.18, 0.72, 0.16, 1),
+    left var(--battlefront-zoom-duration) cubic-bezier(0.18, 0.72, 0.16, 1),
+    opacity 220ms ease;
+}
+
+.battlefrontRevealGridEdge-top,
+.battlefrontRevealGridEdge-bottom {
+  left: 0;
+  right: 0;
+  height: 2px;
+}
+
+.battlefrontRevealGridEdge-top {
+  top: calc(50% - (var(--battlefront-grid-window-size) / 2));
+  transform: translateY(-50%);
+}
+
+.battlefrontRevealGridEdge-bottom {
+  top: calc(50% + (var(--battlefront-grid-window-size) / 2));
+  transform: translateY(-50%);
+}
+
+.battlefrontRevealGridEdge-left,
+.battlefrontRevealGridEdge-right {
+  top: 0;
+  width: 2px;
+  bottom: 0;
+  background: linear-gradient(180deg, rgba(255, 209, 102, 0.18), rgba(255, 209, 102, 0.92), rgba(255, 209, 102, 0.18));
+}
+
+.battlefrontRevealGridEdge-left {
+  left: calc(50% - (var(--battlefront-grid-window-size) / 2));
+  transform: translateX(-50%);
+}
+
+.battlefrontRevealGridEdge-right {
+  left: calc(50% + (var(--battlefront-grid-window-size) / 2));
+  transform: translateX(-50%);
+}
+
+.battlefrontReveal-zooming .battlefrontRevealGridEdge-top {
+  top: 0;
+}
+
+.battlefrontReveal-zooming .battlefrontRevealGridEdge-bottom {
+  top: 100%;
+}
+
+.battlefrontReveal-zooming .battlefrontRevealGridEdge-left {
+  left: 0;
+}
+
+.battlefrontReveal-zooming .battlefrontRevealGridEdge-right {
+  left: 100%;
+}
+
+.battlefrontReveal-locked .battlefrontRevealGridEdge-top {
+  top: 0;
+}
+
+.battlefrontReveal-locked .battlefrontRevealGridEdge-bottom {
+  top: 100%;
+}
+
+.battlefrontReveal-locked .battlefrontRevealGridEdge-left {
+  left: 0;
+}
+
+.battlefrontReveal-locked .battlefrontRevealGridEdge-right {
+  left: 100%;
+}
+
+.battlefrontRevealReticle {
+  left: 50%;
+  top: 50%;
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 209, 102, 0.48);
+  transform: translate(-50%, -50%);
+  box-shadow:
+    0 0 0 18px rgba(255, 209, 102, 0.05),
+    0 0 44px rgba(87, 214, 255, 0.12);
+  animation: battlefrontReticlePulse 2.4s ease-in-out infinite;
+}
+
+.battlefrontRevealReticle::before,
+.battlefrontRevealReticle::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  background: rgba(255, 209, 102, 0.88);
+  transform: translate(-50%, -50%);
+}
+
+.battlefrontRevealReticle::before {
+  width: 2px;
+  height: 220px;
+}
+
+.battlefrontRevealReticle::after {
+  width: 220px;
+  height: 2px;
+}
+
+.battlefrontRevealOrbit {
+  left: 50%;
+  top: 50%;
+  border-radius: 50%;
+  border: 1px solid rgba(122, 157, 255, 0.16);
+  transform: translate(-50%, -50%);
+  animation: battlefrontOrbitSpin 18s linear infinite;
+}
+
+.battlefrontRevealOrbit-a {
+  width: 320px;
+  height: 320px;
+}
+
+.battlefrontRevealOrbit-b {
+  width: 520px;
+  height: 520px;
+  border-color: rgba(93, 255, 204, 0.12);
+  animation-duration: 26s;
+  animation-direction: reverse;
+}
+
+.battlefrontRevealHud {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  max-width: min(420px, calc(100% - 72px));
+  padding: 18px 18px 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(122, 157, 255, 0.24);
+  background:
+    linear-gradient(180deg, rgba(11, 18, 38, 0.88) 0%, rgba(8, 14, 28, 0.78) 100%);
+  box-shadow: 0 24px 50px rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(16px);
+  transform-origin: top left;
+  transition:
+    transform 700ms cubic-bezier(0.18, 0.72, 0.18, 1),
+    opacity 420ms ease;
+}
+
+.battlefrontRevealEyebrow {
+  margin-bottom: 8px;
+  color: #ffd166;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.battlefrontRevealTitle {
+  color: #f5f8ff;
+  font-size: clamp(22px, 2.8vw, 34px);
+  line-height: 1.04;
+  font-weight: 700;
+  transition:
+    font-size 700ms cubic-bezier(0.18, 0.72, 0.18, 1),
+    letter-spacing 700ms ease,
+    transform 700ms cubic-bezier(0.18, 0.72, 0.18, 1);
+}
+
+.battlefrontRevealSubtitle {
+  margin-top: 10px;
+  color: #bfd1ff;
+  font-size: 13px;
+  line-height: 1.55;
+  max-width: 38ch;
+  transition:
+    font-size 700ms cubic-bezier(0.18, 0.72, 0.18, 1),
+    opacity 420ms ease;
+}
+
+.battlefrontRevealProgress {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.battlefrontRevealProgressItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #8ea2d6;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  transition:
+    transform 420ms ease,
+    color 240ms ease,
+    opacity 240ms ease;
+}
+
+.battlefrontRevealProgressDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #3f4f7a;
+  box-shadow: 0 0 0 5px rgba(63, 79, 122, 0.15);
+}
+
+.battlefrontRevealProgressItem.active {
+  color: #fff2c7;
+}
+
+.battlefrontRevealProgressItem.active .battlefrontRevealProgressDot {
+  background: #ffd166;
+  box-shadow: 0 0 0 7px rgba(255, 209, 102, 0.16);
+}
+
+.battlefrontRevealProgressItem.done {
+  color: #baf8e5;
+}
+
+.battlefrontRevealProgressItem.done .battlefrontRevealProgressDot {
+  background: #5dffcc;
+  box-shadow: 0 0 0 7px rgba(93, 255, 204, 0.14);
+}
+
+.battlefrontRevealProgressItem.failed {
+  color: #ffd0cc;
+}
+
+.battlefrontRevealProgressItem.failed .battlefrontRevealProgressDot {
+  background: #ff8a80;
+  box-shadow: 0 0 0 7px rgba(255, 138, 128, 0.16);
+}
+
+.battlefrontRevealMeta {
+  margin-top: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  transition: transform 700ms cubic-bezier(0.18, 0.72, 0.18, 1);
+}
+
+.battlefrontRevealMeta span,
+.battlefrontRevealPreviewLabel {
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(122, 157, 255, 0.22);
+  background: rgba(12, 20, 42, 0.68);
+  color: #dfe8ff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.battlefrontRevealPreviewCard {
+  position: absolute;
+  right: 28px;
+  bottom: 28px;
+  width: min(280px, 28vw);
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(122, 157, 255, 0.26);
+  background:
+    linear-gradient(180deg, rgba(11, 18, 38, 0.84) 0%, rgba(8, 14, 28, 0.76) 100%);
+  box-shadow: 0 20px 46px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(14px);
+  transform-origin: bottom right;
+  transition:
+    transform 700ms cubic-bezier(0.18, 0.72, 0.18, 1),
+    opacity 420ms ease,
+    border-color 420ms ease,
+    box-shadow 420ms ease;
+}
+
+.battlefrontRevealPreviewLabel {
+  display: inline-flex;
+  margin-bottom: 10px;
+}
+
+.battlefrontRevealPreviewCard img {
+  display: block;
+  width: 100%;
+  height: 170px;
+  object-fit: cover;
+  border-radius: 14px;
+  border: 1px solid rgba(122, 157, 255, 0.24);
+  background: #0d1430;
+}
+
+.battlefrontRevealPreviewCard .retrievalItemPlaceholder {
+  min-height: 170px;
+  margin-bottom: 0;
+}
+
+.battlefrontReveal-searching .battlefrontRevealReticle {
+  width: 220px;
+  height: 220px;
+  border-color: rgba(87, 214, 255, 0.5);
+  box-shadow:
+    0 0 0 24px rgba(87, 214, 255, 0.05),
+    0 0 54px rgba(87, 214, 255, 0.18);
+}
+
+.battlefrontReveal-searching .battlefrontRevealOrbit-a {
+  width: 440px;
+  height: 440px;
+}
+
+.battlefrontReveal-searching .battlefrontRevealOrbit-b {
+  width: 720px;
+  height: 720px;
+  opacity: 0.84;
+}
+
+.battlefrontReveal-searching .battlefrontRevealTitle {
+  font-size: clamp(26px, 3.2vw, 38px);
+}
+
+.battlefrontReveal-searching .battlefrontRevealSubtitle {
+  max-width: 44ch;
+}
+
+.battlefrontReveal-searching .battlefrontRevealGridField {
+  --battlefront-grid-scale: 3.4;
+  --battlefront-grid-window-size: 96vmin;
+  opacity: 0.62;
+}
+
+.battlefrontReveal-acquiring .battlefrontRevealGridField {
+  --battlefront-grid-scale: 2.5;
+  --battlefront-grid-window-size: 68vmin;
+}
+
+.battlefrontReveal-acquiring .battlefrontRevealGridEdge-top {
+  animation: battlefrontGridConvergeTop var(--battlefront-line-horizontal-duration) cubic-bezier(0.18, 0.82, 0.16, 1) 1 both;
+}
+
+.battlefrontReveal-acquiring .battlefrontRevealGridEdge-bottom {
+  animation: battlefrontGridConvergeBottom var(--battlefront-line-horizontal-duration) cubic-bezier(0.18, 0.82, 0.16, 1) 1 both;
+}
+
+.battlefrontReveal-acquiring .battlefrontRevealGridEdge-left {
+  animation: battlefrontGridConvergeLeft var(--battlefront-line-vertical-duration) cubic-bezier(0.18, 0.82, 0.16, 1) var(--battlefront-line-vertical-delay) 1 both;
+}
+
+.battlefrontReveal-acquiring .battlefrontRevealGridEdge-right {
+  animation: battlefrontGridConvergeRight var(--battlefront-line-vertical-duration) cubic-bezier(0.18, 0.82, 0.16, 1) var(--battlefront-line-vertical-delay) 1 both;
+}
+
+.battlefrontReveal-approach .battlefrontRevealGridField {
+  --battlefront-grid-scale: 1.85;
+  --battlefront-grid-window-size: 44vmin;
+}
+
+.battlefrontReveal-approach .battlefrontRevealGridEdge-top {
+  animation: battlefrontGridConvergeTop var(--battlefront-line-horizontal-duration) cubic-bezier(0.18, 0.82, 0.16, 1) 1 both;
+}
+
+.battlefrontReveal-approach .battlefrontRevealGridEdge-bottom {
+  animation: battlefrontGridConvergeBottom var(--battlefront-line-horizontal-duration) cubic-bezier(0.18, 0.82, 0.16, 1) 1 both;
+}
+
+.battlefrontReveal-approach .battlefrontRevealGridEdge-left {
+  animation: battlefrontGridConvergeLeft var(--battlefront-line-vertical-duration) cubic-bezier(0.18, 0.82, 0.16, 1) var(--battlefront-line-vertical-delay) 1 both;
+}
+
+.battlefrontReveal-approach .battlefrontRevealGridEdge-right {
+  animation: battlefrontGridConvergeRight var(--battlefront-line-vertical-duration) cubic-bezier(0.18, 0.82, 0.16, 1) var(--battlefront-line-vertical-delay) 1 both;
+}
+
+.battlefrontReveal-descent .battlefrontRevealGridField {
+  --battlefront-grid-scale: 1.28;
+  --battlefront-grid-window-size: 26vmin;
+}
+
+.battlefrontReveal-descent .battlefrontRevealGridEdge-top {
+  animation: battlefrontGridConvergeTop var(--battlefront-line-horizontal-duration) cubic-bezier(0.18, 0.82, 0.16, 1) 1 both;
+}
+
+.battlefrontReveal-descent .battlefrontRevealGridEdge-bottom {
+  animation: battlefrontGridConvergeBottom var(--battlefront-line-horizontal-duration) cubic-bezier(0.18, 0.82, 0.16, 1) 1 both;
+}
+
+.battlefrontReveal-descent .battlefrontRevealGridEdge-left {
+  animation: battlefrontGridConvergeLeft var(--battlefront-line-vertical-duration) cubic-bezier(0.18, 0.82, 0.16, 1) var(--battlefront-line-vertical-delay) 1 both;
+}
+
+.battlefrontReveal-descent .battlefrontRevealGridEdge-right {
+  animation: battlefrontGridConvergeRight var(--battlefront-line-vertical-duration) cubic-bezier(0.18, 0.82, 0.16, 1) var(--battlefront-line-vertical-delay) 1 both;
+}
+
+.battlefrontReveal-terminal .battlefrontRevealGridField,
+.battlefrontReveal-locked .battlefrontRevealGridField {
+  --battlefront-grid-scale: 1.04;
+  --battlefront-grid-window-size: 12vmin;
+  opacity: 0.92;
+}
+
+.battlefrontReveal-terminal .battlefrontRevealGridEdge-top {
+  animation: battlefrontGridConvergeTop var(--battlefront-line-horizontal-duration) cubic-bezier(0.18, 0.82, 0.16, 1) 1 both;
+}
+
+.battlefrontReveal-terminal .battlefrontRevealGridEdge-bottom {
+  animation: battlefrontGridConvergeBottom var(--battlefront-line-horizontal-duration) cubic-bezier(0.18, 0.82, 0.16, 1) 1 both;
+}
+
+.battlefrontReveal-terminal .battlefrontRevealGridEdge-left {
+  animation: battlefrontGridConvergeLeft var(--battlefront-line-vertical-duration) cubic-bezier(0.18, 0.82, 0.16, 1) var(--battlefront-line-vertical-delay) 1 both;
+}
+
+.battlefrontReveal-terminal .battlefrontRevealGridEdge-right {
+  animation: battlefrontGridConvergeRight var(--battlefront-line-vertical-duration) cubic-bezier(0.18, 0.82, 0.16, 1) var(--battlefront-line-vertical-delay) 1 both;
+}
+
+.battlefrontReveal-locked .battlefrontRevealGridEdge {
+  background: linear-gradient(90deg, rgba(93, 255, 204, 0.2), rgba(93, 255, 204, 0.96), rgba(93, 255, 204, 0.2));
+  box-shadow: 0 0 20px rgba(93, 255, 204, 0.24);
+  opacity: 1;
+}
+
+.battlefrontReveal-locked .battlefrontRevealGridEdge-left,
+.battlefrontReveal-locked .battlefrontRevealGridEdge-right {
+  background: linear-gradient(180deg, rgba(93, 255, 204, 0.2), rgba(93, 255, 204, 0.96), rgba(93, 255, 204, 0.2));
+}
+
+.battlefrontReveal-locked .battlefrontRevealReticle,
+.battlefrontReveal-locked .battlefrontRevealReticle::before,
+.battlefrontReveal-locked .battlefrontRevealReticle::after {
+  border-color: rgba(93, 255, 204, 0.6);
+  background: rgba(93, 255, 204, 0.92);
+}
+
+.battlefrontReveal-locked .battlefrontRevealReticle {
+  box-shadow:
+    0 0 0 22px rgba(93, 255, 204, 0.07),
+    0 0 50px rgba(93, 255, 204, 0.16);
+}
+
 .orbLabPanel {
   display: flex;
   flex-direction: column;
@@ -1109,7 +1656,100 @@ button.compact:active:not(:disabled) {
   }
 }
 
+@keyframes battlefrontStarsDrift {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(4%, 3%, 0) scale(1.04);
+  }
+}
+
+@keyframes battlefrontGridConvergeTop {
+  0% {
+    transform: translateY(calc(-50% - 68vh));
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-50%);
+    opacity: 1;
+  }
+}
+
+@keyframes battlefrontGridConvergeBottom {
+  0% {
+    transform: translateY(calc(-50% + 68vh));
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-50%);
+    opacity: 1;
+  }
+}
+
+@keyframes battlefrontGridConvergeLeft {
+  0% {
+    transform: translateX(calc(-50% - 68vw));
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-50%);
+    opacity: 1;
+  }
+}
+
+@keyframes battlefrontGridConvergeRight {
+  0% {
+    transform: translateX(calc(-50% + 68vw));
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-50%);
+    opacity: 1;
+  }
+}
+
+@keyframes battlefrontReticlePulse {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(0.94);
+    opacity: 0.6;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.04);
+    opacity: 1;
+  }
+}
+
+@keyframes battlefrontOrbitSpin {
+  from {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
 @media (max-width: 920px) {
+  .battlefrontReveal {
+    inset: 0;
+  }
+
+  .battlefrontRevealPreviewCard {
+    width: min(240px, calc(100vw - 48px));
+  }
+
   .orbPopupHero {
     grid-template-columns: 1fr;
   }
