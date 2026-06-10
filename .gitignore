@@ -60,3 +60,7 @@ temp/
 *.swp
 
 .lancedb/
+
+# Eval outputs and bulky eval images
+eval/results/
+eval/datasets/held_out/images/

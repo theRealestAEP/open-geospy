@@ -1,0 +1,101 @@
+{
+  "capture_top1": 0.0,
+  "categories": {
+    "in_index_pano": {
+      "capture_top1": 0.0,
+      "median_error_m": 0.03,
+      "median_error_m_ci95": {
+        "high": 0.04,
+        "low": 0.02
+      },
+      "panorama_top1": 98.36,
+      "positive_cases": 61,
+      "within_100m": 86.89,
+      "within_100m_ci95": {
+        "high": 93.2,
+        "low": 76.2
+      },
+      "within_25m": 86.89,
+      "within_25m_ci95": {
+        "high": 93.2,
+        "low": 76.2
+      },
+      "within_50m": 86.89,
+      "within_50m_ci95": {
+        "high": 93.2,
+        "low": 76.2
+      }
+    },
+    "novel_pano": {
+      "capture_top1": 0.0,
+      "median_error_m": 2004.09,
+      "median_error_m_ci95": {
+        "high": 2502.63,
+        "low": 1590.32
+      },
+      "panorama_top1": 0.0,
+      "positive_cases": 439,
+      "within_100m": 30.52,
+      "within_100m_ci95": {
+        "high": 34.99,
+        "low": 26.4
+      },
+      "within_25m": 23.92,
+      "within_25m_ci95": {
+        "high": 28.12,
+        "low": 20.16
+      },
+      "within_50m": 28.02,
+      "within_50m_ci95": {
+        "high": 32.4,
+        "low": 24.02
+      }
+    }
+  },
+  "concurrency": 1,
+  "endpoint": "http://127.0.0.1:8000/api/retrieval/locate-by-image",
+  "false_accept_rate": 0.0,
+  "limit": 0,
+  "mean_elapsed_ms": 1057.23,
+  "median_error_m": 1332.14,
+  "median_error_m_ci95": {
+    "high": 1888.7,
+    "low": 713.39
+  },
+  "negative_cases": 0,
+  "ok_cases": 500,
+  "ok_rate": 100.0,
+  "panorama_top1": 98.36,
+  "positive_cases": 500,
+  "reject_family_score_threshold": null,
+  "reject_rate": 0.0,
+  "setting_embedding_base": "",
+  "setting_min_similarity": null,
+  "setting_orb_enabled": null,
+  "setting_orb_feature_count": null,
+  "setting_orb_ignore_bottom_ratio": null,
+  "setting_orb_ransac_top_k": null,
+  "setting_orb_top_n": null,
+  "setting_orb_weight": null,
+  "setting_sam2_mask_cars": null,
+  "setting_sam2_mask_trees": null,
+  "setting_settings_id": "default",
+  "setting_top_k": 8,
+  "settings_id": "default",
+  "total_cases": 500,
+  "within_100m": 37.4,
+  "within_100m_ci95": {
+    "high": 41.72,
+    "low": 33.27
+  },
+  "within_25m": 31.6,
+  "within_25m_ci95": {
+    "high": 35.8,
+    "low": 27.68
+  },
+  "within_50m": 35.2,
+  "within_50m_ci95": {
+    "high": 39.48,
+    "low": 31.14
+  }
+}
