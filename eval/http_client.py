@@ -1,9 +1,9 @@
 import json
 import mimetypes
 import os
-import uuid
 import urllib.error
 import urllib.request
+import uuid
 from typing import Dict, List, Optional, Tuple
 
 

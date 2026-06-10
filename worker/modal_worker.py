@@ -6,7 +6,6 @@ Results are always written into the local DB/captures directory by the caller.
 """
 
 import csv
-import io
 import logging
 import os
 import threading

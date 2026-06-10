@@ -12,7 +12,6 @@ import psycopg
 import pyarrow as pa
 from psycopg.rows import dict_row
 
-
 log = logging.getLogger("sync_pgvector_to_lancedb")
 
 

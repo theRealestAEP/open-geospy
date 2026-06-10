@@ -10,19 +10,19 @@ Usage:
     python -m worker.batch_crawler --seeds seeds.csv --max 2000
 """
 
-import asyncio
 import argparse
+import asyncio
 import csv
+import logging
 import os
 import re
 import socket
-import logging
 from datetime import datetime
 from typing import List, Optional, Sequence, Tuple
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-from playwright.async_api import async_playwright, Page
+from playwright.async_api import Page, async_playwright
 
 from backend.app.embedding_ingest import CaptureEmbeddingIngestor
 from config import CrawlerConfig

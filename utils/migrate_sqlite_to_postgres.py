@@ -14,7 +14,6 @@ from typing import Dict, List
 
 from db.postgres_database import Database
 
-
 DEFAULT_SQLITE_PATH = "db/locations.db"
 DEFAULT_DATABASE_URL = os.getenv(
     "DATABASE_URL", "postgresql://geospy:geospy@127.0.0.1:5432/geospy"

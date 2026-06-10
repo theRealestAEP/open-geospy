@@ -39,12 +39,12 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from backend.app.api.retrieval import create_retrieval_router
-from backend.app.vector_store import build_vector_store, get_configured_vector_backend
-from config import CrawlerConfig
 from backend.app.clip_embeddings import (
     encode_image_batch_for_all_models,
     select_retrieval_embedders,
 )
+from backend.app.vector_store import build_vector_store, get_configured_vector_backend
+from config import CrawlerConfig
 from db.postgres_database import Database
 from utils.seed_grid import generate_grid
 from worker.water_filter import filter_water_points

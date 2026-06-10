@@ -1,0 +1,22 @@
+[project]
+name = "geospy"
+version = "0.1.0"
+description = "Open-source street-view collection + image geolocation stack"
+requires-python = ">=3.12"
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+extend-exclude = ["archive", "backups", "captures", "scan_logs", "seeds", "frontend"]
+
+[tool.ruff.lint]
+# Start pragmatic: errors, pyflakes, bugbear-lite via builtins. Expand later.
+select = ["E", "F", "W", "I"]
+ignore = [
+    "E501", # line length handled loosely; formatter not enforced yet
+    "E402", # env_bootstrap/sys.path setup must run before imports
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

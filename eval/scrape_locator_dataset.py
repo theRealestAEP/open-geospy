@@ -2,9 +2,7 @@
 
 import argparse
 import asyncio
-import csv
 import json
-import math
 import os
 import random
 import re
@@ -17,7 +15,6 @@ from urllib.request import Request, urlopen
 from config import CrawlerConfig
 from eval.common import EvalCase, haversine_m, write_csv, write_json
 from worker.water_filter import is_water
-
 
 SV_PANO_RE = re.compile(r"!1s([A-Za-z0-9_-]{10,})!2e\d+")
 THUMB_PANO_RE = re.compile(r"panoid(?:=|%3D)([A-Za-z0-9_-]{10,})")

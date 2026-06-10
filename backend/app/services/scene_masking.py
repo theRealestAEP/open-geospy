@@ -4,7 +4,6 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from backend.app.services.runtime import env_bool, env_float, resolve_torch_device
 
-
 SAM2_MASK_CARS_DEFAULT = env_bool("GEOSPY_SAM2_MASK_CARS", False)
 SAM2_MASK_TREES_DEFAULT = env_bool("GEOSPY_SAM2_MASK_TREES", False)
 SAM2_MODEL_ID_DEFAULT = (

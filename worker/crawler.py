@@ -6,19 +6,19 @@ Usage:
     python -m worker.crawler --lat 37.7749 --lon -122.4194 --max 500 --strategy bfs
 """
 
-import asyncio
 import argparse
-import math
-import re
-import os
+import asyncio
 import logging
-from datetime import datetime
+import math
+import os
+import re
 from collections import deque
-from typing import Optional, Tuple, List
+from datetime import datetime
+from typing import List, Optional, Tuple
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-from playwright.async_api import async_playwright, Page, Browser
+from playwright.async_api import Browser, Page, async_playwright
 
 from config import CrawlerConfig
 from db.postgres_database import Capture, Database, Panorama
@@ -445,7 +445,7 @@ class StreetViewCrawler:
 
         Strategy: Look for the clickable navigation arrows in Street View,
         simulate clicking each one, read the resulting URL, then go back.
-        
+
         Alternative simpler approach: Generate a grid of nearby candidate points.
         """
         neighbors = []

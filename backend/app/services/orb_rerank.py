@@ -9,7 +9,6 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 from backend.app.services.runtime import env_bool, env_float, env_int
 from backend.app.services.scene_masking import build_sam2_scene_mask, merge_sam2_mask_stats
 
-
 LOCATE_ORB_ENABLED_DEFAULT = env_bool("GEOSPY_LOCATE_ORB_ENABLED", False)
 LOCATE_ORB_TOP_N_DEFAULT = env_int("GEOSPY_LOCATE_ORB_TOP_N", 100, minimum=1, maximum=5000)
 LOCATE_ORB_WEIGHT_DEFAULT = env_float("GEOSPY_LOCATE_ORB_WEIGHT", 0.75, minimum=0.0, maximum=5.0)
