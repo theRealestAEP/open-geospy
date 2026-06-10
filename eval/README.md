@@ -2,6 +2,24 @@
 
 This folder is the start of a reusable evaluation framework for retrieval and locator experiments.
 
+## Leakage Warning — read this first
+
+`build_locator_dataset.py` samples its positives from the **indexed captures
+themselves**, so any run against that manifest is a smoke test, not a real
+accuracy measurement (the system is shown images it has literally indexed).
+
+For honest numbers, build a held-out set with `scrape_locator_dataset.py`:
+it fetches fresh Street View renders (different pixels from the indexed
+captures) and records whether each pano exists in the index. The runner then
+reports metrics per category:
+
+- `in_index_pano` — query pano exists in the index. Tests recognition of a
+  known panorama from a new render/heading/pitch.
+- `novel_pano` — query pano is NOT in the index but has ground-truth coords.
+  Tests spatial generalization: the system should still land within 25–100m
+  via neighboring panoramas.
+- `negative` — `expected_reject=1` cases the system should refuse.
+
 ## Files
 
 - `build_locator_dataset.py`
@@ -90,13 +108,15 @@ Example settings JSON:
 ]
 ```
 
-Scrape a starter eval set inside a boundary:
+Scrape a held-out eval set inside a boundary (aim for 500+ cases so the
+within-50m confidence interval is tighter than a few points):
 
 ```bash
 python -m eval.scrape_locator_dataset \
   --bbox 37.774,-122.431,37.787,-122.412 \
-  --count 50 \
-  --output-dir eval/datasets/sf_random_queries
+  --count 500 \
+  --split held-out \
+  --output-dir eval/datasets/held_out
 ```
 
 Results land under `eval/results/...` with:
@@ -121,6 +141,33 @@ For negative cases:
 
 - `reject_rate`
 - `false_accept_rate`
+
+All rate metrics carry 95% Wilson confidence intervals (`*_ci95`), and
+`median_error_m` carries a bootstrap CI. `summary.json` also includes a
+`categories` block with the same metrics broken down by
+`in_index_pano` / `novel_pano` / `negative`.
+
+## Regression Baselines
+
+Snapshot a run as the regression baseline:
+
+```bash
+python -m eval.run_locator \
+  --cases eval/datasets/held_out/locator_cases.csv \
+  --save-baseline eval/baselines/locator_baseline.json
+```
+
+Compare any later run against it:
+
+```bash
+python -m eval.run_locator \
+  --cases eval/datasets/held_out/locator_cases.csv \
+  --baseline eval/baselines/locator_baseline.json
+```
+
+The runner prints per-metric deltas, flags `baseline_regressions=...`, and
+writes `baseline_comparison.json` into the results directory. Commit
+`eval/baselines/` so regressions are visible in review.
 
 ## Negatives
 

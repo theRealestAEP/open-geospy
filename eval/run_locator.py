@@ -12,6 +12,12 @@ from typing import Dict, List, Optional, Sequence, Tuple
 
 from eval.common import EvalCase, haversine_m, load_eval_cases, write_csv, write_json
 from eval.http_client import maybe_str, post_image_for_json
+from eval.metrics import (
+    compare_to_baseline,
+    summarize_by_category,
+    summarize_negative,
+    summarize_positive,
+)
 
 
 @dataclass
@@ -39,77 +45,6 @@ def _prediction_lat_lon(match: dict) -> Tuple[Optional[float], Optional[float]]:
         return float(lat), float(lon)
     except Exception:
         return None, None
-
-
-def _summarize_positive(rows: List[dict]) -> Dict[str, float]:
-    total = len(rows)
-    if total <= 0:
-        return {
-            "positive_cases": 0,
-            "within_25m": 0.0,
-            "within_50m": 0.0,
-            "within_100m": 0.0,
-            "panorama_top1": 0.0,
-            "capture_top1": 0.0,
-            "median_error_m": 0.0,
-        }
-    errors = [float(row["error_m"]) for row in rows if row.get("error_m") is not None]
-    errors.sort()
-
-    def pct(threshold: float) -> float:
-        return round(
-            100.0 * sum(1 for row in rows if float(row.get("error_m") or 1e18) <= threshold) / total,
-            2,
-        )
-
-    def top1_pct(field: str) -> float:
-        eligible = [row for row in rows if row.get(field) is not None]
-        if not eligible:
-            return 0.0
-        return round(100.0 * sum(1 for row in eligible if int(row.get(field) or 0)) / len(eligible), 2)
-
-    median_error = errors[len(errors) // 2] if errors else 0.0
-    return {
-        "positive_cases": total,
-        "within_25m": pct(25.0),
-        "within_50m": pct(50.0),
-        "within_100m": pct(100.0),
-        "panorama_top1": top1_pct("panorama_top1"),
-        "capture_top1": top1_pct("capture_top1"),
-        "median_error_m": round(float(median_error), 2),
-    }
-
-
-def _summarize_negative(
-    rows: List[dict], reject_family_score_threshold: Optional[float]
-) -> Dict[str, float]:
-    total = len(rows)
-    if total <= 0:
-        return {
-            "negative_cases": 0,
-            "reject_rate": 0.0,
-            "false_accept_rate": 0.0,
-        }
-    correct_rejects = 0
-    for row in rows:
-        has_match = bool(row.get("top_family_id"))
-        top_score = row.get("top_family_score")
-        rejected = not has_match
-        if (
-            not rejected
-            and reject_family_score_threshold is not None
-            and top_score is not None
-            and float(top_score) < float(reject_family_score_threshold)
-        ):
-            rejected = True
-        if rejected:
-            correct_rejects += 1
-    reject_rate = round(100.0 * correct_rejects / total, 2)
-    return {
-        "negative_cases": total,
-        "reject_rate": reject_rate,
-        "false_accept_rate": round(100.0 - reject_rate, 2),
-    }
 
 
 def _evaluate_case(
@@ -409,6 +344,11 @@ def _evaluate_settings(
     return result_rows
 
 
+def _flat_summary(summary: dict) -> dict:
+    """Summary with nested values (CIs, category breakdowns) removed for CSV output."""
+    return {key: value for key, value in summary.items() if not isinstance(value, dict)}
+
+
 def _print_case_progress(idx: int, total: int, row: dict) -> None:
     print(
         f"[{idx}/{total}] settings_id={row.get('settings_id')} "
@@ -444,8 +384,13 @@ def _summarize_rows(
         "ok_rate": round(100.0 * ok_count / len(rows), 2) if rows else 0.0,
         "mean_elapsed_ms": mean_elapsed,
         **_settings_to_row(settings),
-        **_summarize_positive(positive_rows),
-        **_summarize_negative(negative_rows, args.reject_family_score_threshold),
+        **summarize_positive(positive_rows, seed=int(args.seed)),
+        **summarize_negative(negative_rows, args.reject_family_score_threshold),
+        "categories": summarize_by_category(
+            rows,
+            args.reject_family_score_threshold,
+            seed=int(args.seed),
+        ),
     }
     return summary
 
@@ -490,6 +435,17 @@ def main() -> None:
         help="Optional threshold for counting low-score matches as correct rejects on negative cases.",
     )
     parser.add_argument("--output-dir", default="")
+    parser.add_argument(
+        "--baseline",
+        default="",
+        help="Path to a baseline summary.json to compare this run against.",
+    )
+    parser.add_argument(
+        "--save-baseline",
+        default="",
+        help="Path to write this run's summary as the new regression baseline "
+        "(e.g. eval/baselines/locator_baseline.json).",
+    )
     args = parser.parse_args()
 
     cases = load_eval_cases(os.path.abspath(args.cases))
@@ -546,7 +502,10 @@ def main() -> None:
         )
 
     write_csv(os.path.join(output_dir, "all_case_results.csv"), all_rows)
-    write_csv(os.path.join(output_dir, "combined_summary.csv"), summaries)
+    write_csv(
+        os.path.join(output_dir, "combined_summary.csv"),
+        [_flat_summary(summary) for summary in summaries],
+    )
     write_json(
         os.path.join(output_dir, "combined_summary.json"),
         {
@@ -559,13 +518,49 @@ def main() -> None:
     )
     print(f"output_dir={output_dir}")
     if len(summaries) == 1:
-        for key, value in summaries[0].items():
+        primary = summaries[0]
+        for key, value in _flat_summary(primary).items():
             print(f"{key}={value}")
+        for category, stats in (primary.get("categories") or {}).items():
+            print(f"category={category} " + " ".join(
+                f"{key}={value}"
+                for key, value in stats.items()
+                if not isinstance(value, dict)
+            ))
     else:
         best = max(summaries, key=lambda item: (float(item.get("within_50m") or 0.0), -float(item.get("median_error_m") or 1e18)))
+        primary = best
         print(f"best_settings_id={best.get('settings_id')}")
         print(f"best_within_50m={best.get('within_50m')}")
         print(f"best_median_error_m={best.get('median_error_m')}")
+
+    if args.baseline:
+        baseline_path = os.path.abspath(args.baseline)
+        with open(baseline_path, "r", encoding="utf-8") as f:
+            baseline = json.load(f)
+        comparison = compare_to_baseline(primary, baseline)
+        write_json(os.path.join(output_dir, "baseline_comparison.json"), comparison)
+        regressions = [
+            metric
+            for metric, item in comparison.items()
+            if item.get("improved") is False
+        ]
+        print(f"baseline={baseline_path}")
+        for metric, item in comparison.items():
+            print(
+                f"baseline_delta {metric}: {item['baseline']} -> {item['current']} "
+                f"(delta={item['delta']:+})"
+            )
+        if regressions:
+            print(f"baseline_regressions={','.join(regressions)}")
+        else:
+            print("baseline_regressions=none")
+
+    if args.save_baseline:
+        baseline_out = os.path.abspath(args.save_baseline)
+        os.makedirs(os.path.dirname(baseline_out), exist_ok=True)
+        write_json(baseline_out, primary)
+        print(f"saved_baseline={baseline_out}")
 
 
 if __name__ == "__main__":

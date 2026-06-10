@@ -1,4 +1,11 @@
-"""Build a locator evaluation manifest from local captures and optional negative files."""
+"""Build a locator evaluation manifest from local captures and optional negative files.
+
+WARNING: positive cases sampled here are the exact images that were indexed,
+so scores are inflated by construction (the system is queried with its own
+index data). Use this manifest only as a smoke/sanity check. For honest
+accuracy numbers build a held-out set with `python -m eval.scrape_locator_dataset`,
+which fetches fresh Street View renders and tags whether each pano is in the
+index (in_index_pano vs novel_pano categories in eval.run_locator)."""
 
 import argparse
 import os
@@ -138,6 +145,11 @@ def main() -> None:
     output_path = os.path.abspath(args.output)
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     write_csv(output_path, rows)
+    print(
+        "WARNING: positives are drawn from the indexed captures themselves "
+        "(data leakage). Treat results as a smoke test only; use "
+        "eval.scrape_locator_dataset for held-out evaluation."
+    )
     print(f"wrote_manifest={output_path}")
     print(f"positive_cases={len(positives)}")
     print(f"negative_cases={len(negatives)}")
