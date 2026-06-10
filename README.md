@@ -242,6 +242,7 @@ python -m utils.index_capture_embeddings \
 Automated locator eval tooling now lives under `eval/`.
 
 - `python -m eval.build_locator_dataset` - build a starter manifest from local captures.
-- `python -m eval.run_locator` - run `locate-by-image` evals and compute `within_25m/50m/100m`.
+- `python -m eval.run_locator` - run `locate-by-image` evals, including settings matrices, and compute `within_25m/50m/100m`.
+- `python -m eval.scrape_locator_dataset` - scrape random Street View query images for a bbox/polygon manifest.
 
 See [eval/README.md](/Users/alexpickett/Desktop/Projects/geoSpy/eval/README.md) for the manifest format and negative-case workflow.

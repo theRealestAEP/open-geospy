@@ -10,7 +10,23 @@ body {
 }
 
 .app { height: 100%; width: 100%; }
-#map { position: fixed; top: 0; left: 0; right: 360px; bottom: 0; }
+#map {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 360px;
+  bottom: 0;
+  transition: right 260ms ease;
+}
+#map.battlefrontMapFull {
+  right: 0;
+}
+#map.battlefrontMapLocked {
+  pointer-events: none;
+}
+#map.battlefrontMapLocked .leaflet-control-container {
+  opacity: 0.2;
+}
 #sidebar {
   position: fixed;
   top: 0;
@@ -21,6 +37,15 @@ body {
   background: #1a1a2e;
   color: #e0e0e0;
   padding: 16px;
+  transition:
+    transform 260ms ease,
+    opacity 220ms ease;
+}
+#sidebar.sidebarHidden {
+  transform: translateX(100%);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 h1 { margin: 0 0 12px; font-size: 18px; }
@@ -58,7 +83,7 @@ label { display: block; font-size: 12px; margin-bottom: 8px; color: #b8c0e0; }
   accent-color: #4c95ff;
   cursor: pointer;
 }
-input, select {
+input, select, textarea {
   width: 100%;
   margin-top: 4px;
   border-radius: 8px;
@@ -66,6 +91,13 @@ input, select {
   background: #0f1630;
   color: #ecf0ff;
   padding: 8px;
+}
+textarea {
+  min-height: 180px;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.45;
 }
 button {
   appearance: none;
@@ -245,19 +277,6 @@ button.compact:active:not(:disabled) {
   font-weight: 600;
 }
 
-.retrievalDebug {
-  margin-top: 8px;
-  max-height: 180px;
-  overflow: auto;
-  font-size: 11px;
-  line-height: 1.25;
-  padding: 8px;
-  border-radius: 8px;
-  background: #0f1630;
-  border: 1px solid #3d4c77;
-  color: #d2dcff;
-}
-
 .locateTunePanel {
   margin-top: 8px;
   border: 1px solid #33415f;
@@ -342,26 +361,6 @@ button.compact:active:not(:disabled) {
   color: #95a2c8;
 }
 
-.pipelineExplain {
-  margin-bottom: 8px;
-}
-
-.pipelineLog {
-  max-height: 120px;
-  overflow: auto;
-  border: 1px solid #3d4c77;
-  border-radius: 6px;
-  padding: 6px;
-  background: #0b1126;
-}
-
-.pipelineLogLine {
-  font-size: 10px;
-  color: #b9d3ff;
-  line-height: 1.3;
-  margin-bottom: 3px;
-}
-
 .geospy-mode-control a {
   width: 34px;
   height: 34px;
@@ -442,6 +441,96 @@ button.compact:active:not(:disabled) {
   background: rgba(122, 157, 255, 0.12);
   border-color: rgba(122, 157, 255, 0.18);
   box-shadow: none;
+}
+
+.evalSettingsInput {
+  min-height: 240px;
+}
+
+.evalBoundaryReadout {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+  color: #b8c6ee;
+  font-size: 12px;
+}
+
+.evalBoundaryReadout span:first-child {
+  border: 1px solid rgba(122, 157, 255, 0.25);
+  border-radius: 999px;
+  background: rgba(122, 157, 255, 0.1);
+  color: #d7e4ff;
+  padding: 4px 8px;
+}
+
+.evalJobPanel {
+  margin-top: 10px;
+  border: 1px solid #33415f;
+  border-radius: 8px;
+  padding: 10px;
+  background: #0f1630;
+  overflow-wrap: anywhere;
+}
+
+.evalBestBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.evalBestBar span {
+  border: 1px solid rgba(255, 209, 102, 0.28);
+  border-radius: 999px;
+  background: rgba(255, 209, 102, 0.08);
+  color: #ffe7b0;
+  padding: 5px 8px;
+  font-size: 11px;
+}
+
+.evalSummaryGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.evalSummaryCard {
+  border: 1px solid #33415f;
+  border-radius: 8px;
+  padding: 10px;
+  background: #0f1630;
+}
+
+.evalSummaryTitle {
+  margin-bottom: 8px;
+  color: #d7e4ff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.evalLogPanel {
+  margin-top: 10px;
+  border: 1px solid #33415f;
+  border-radius: 8px;
+  background: #0f1630;
+  padding: 8px;
+}
+
+.evalLogPanel summary {
+  cursor: pointer;
+  color: #d2dcff;
+  font-size: 12px;
+}
+
+.evalLogPanel pre {
+  max-height: 220px;
+  overflow: auto;
+  white-space: pre-wrap;
+  font-size: 11px;
+  line-height: 1.35;
+  color: #b9d3ff;
 }
 
 .battlefrontReveal {

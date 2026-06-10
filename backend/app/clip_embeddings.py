@@ -7,6 +7,8 @@ from typing import Any, List, Optional, Sequence, Tuple
 
 from PIL import Image
 
+from backend.app.services.runtime import parse_boolish, resolve_torch_device
+
 log = logging.getLogger(__name__)
 
 EMBEDDING_BASE_CLIP = "clip"
@@ -36,18 +38,11 @@ DEFAULT_PLACE_VERSION = os.getenv(
     "GEOSPY_PLACE_MODEL_VERSION",
     "open_clip_place",
 )
-DEFAULT_PLACE_TRUST_REMOTE_CODE = (
-    os.getenv("GEOSPY_PLACE_TRUST_REMOTE_CODE", "0").strip().lower()
-    in {"1", "true", "yes", "on"}
+DEFAULT_PLACE_TRUST_REMOTE_CODE = parse_boolish(
+    os.getenv("GEOSPY_PLACE_TRUST_REMOTE_CODE"),
+    default=False,
 )
 DEFAULT_HF_TOKEN = os.getenv("HF_TOKEN") or os.getenv("HUGGING_FACE_HUB_TOKEN")
-
-
-def _is_enabled(raw_value: str, default: bool = True) -> bool:
-    value = str(raw_value).strip().lower()
-    if not value:
-        return default
-    return value in {"1", "true", "yes", "on"}
 
 
 @dataclass(frozen=True)
@@ -64,7 +59,10 @@ class RetrievalModelConfig:
 
 def _build_retrieval_model_configs() -> List[RetrievalModelConfig]:
     configs: List[RetrievalModelConfig] = []
-    clip_enabled = _is_enabled(os.getenv("GEOSPY_CLIP_MODEL_ENABLED", "1"), default=True)
+    clip_enabled = parse_boolish(
+        os.getenv("GEOSPY_CLIP_MODEL_ENABLED"),
+        default=True,
+    )
     if clip_enabled:
         configs.append(
             RetrievalModelConfig(
@@ -78,8 +76,8 @@ def _build_retrieval_model_configs() -> List[RetrievalModelConfig]:
             )
         )
 
-    place_enabled = _is_enabled(
-        os.getenv("GEOSPY_PLACE_MODEL_ENABLED", "1"),
+    place_enabled = parse_boolish(
+        os.getenv("GEOSPY_PLACE_MODEL_ENABLED"),
         default=True,
     )
     if place_enabled:
@@ -208,12 +206,7 @@ class ClipEmbedder:
             return
         torch, open_clip = _import_clip_runtime()
         self._torch = torch
-        if torch.cuda.is_available():
-            self._device = "cuda"
-        elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
-            self._device = "mps"
-        else:
-            self._device = "cpu"
+        self._device = resolve_torch_device(torch)
         model, _, preprocess = open_clip.create_model_and_transforms(
             self.model_name, pretrained=self.pretrained
         )
@@ -342,12 +335,7 @@ class PlaceEmbedder:
         if self.runtime == "open_clip":
             torch, open_clip = _import_clip_runtime()
             self._torch = torch
-            if torch.cuda.is_available():
-                self._device = "cuda"
-            elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
-                self._device = "mps"
-            else:
-                self._device = "cpu"
+            self._device = resolve_torch_device(torch)
             if not self.pretrained:
                 raise RuntimeError(
                     "Place runtime=open_clip requires pretrained checkpoint name."
@@ -363,12 +351,7 @@ class PlaceEmbedder:
             return
         torch, AutoImageProcessor, AutoModel = _import_hf_runtime()
         self._torch = torch
-        if torch.cuda.is_available():
-            self._device = "cuda"
-        elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
-            self._device = "mps"
-        else:
-            self._device = "cpu"
+        self._device = resolve_torch_device(torch)
         self._processor = AutoImageProcessor.from_pretrained(
             self.model_name,
             trust_remote_code=self.trust_remote_code,
@@ -447,17 +430,7 @@ class PlaceEmbedder:
 
 
 def _build_embedder(cfg: RetrievalModelConfig):
-    if cfg.runtime == "hf_transformers":
-        return PlaceEmbedder(
-            model_id=cfg.model_id,
-            model_name=cfg.model_name,
-            pretrained=cfg.pretrained,
-            model_version=cfg.model_version,
-            weight=cfg.weight,
-            trust_remote_code=cfg.trust_remote_code,
-            runtime=cfg.runtime,
-        )
-    if cfg.model_id == "place":
+    if cfg.model_id == "place" or cfg.runtime == "hf_transformers":
         return PlaceEmbedder(
             model_id=cfg.model_id,
             model_name=cfg.model_name,

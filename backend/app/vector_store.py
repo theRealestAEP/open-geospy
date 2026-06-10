@@ -22,6 +22,7 @@ def get_configured_vector_backend() -> str:
 
 
 def _quote_sql_literal(value: str) -> str:
+    # LanceDB's filter/delete APIs take SQL strings in the Python client.
     escaped = str(value).replace("'", "''")
     return f"'{escaped}'"
 
@@ -149,7 +150,8 @@ class LanceVectorStore:
         try:
             self._connect()
             return True
-        except Exception:
+        except Exception as exc:
+            log.debug("LanceDB write readiness check failed uri=%s error=%s", self.uri, exc)
             return False
 
     def _connect(self):
@@ -203,7 +205,8 @@ class LanceVectorStore:
         try:
             schema = table.schema
             names = set(getattr(schema, "names", []) or [])
-        except Exception:
+        except Exception as exc:
+            log.debug("Failed to inspect LanceDB table schema table=%s error=%s", self.table_name, exc)
             names = set()
         return self.embedding_base_column in names
 
@@ -297,7 +300,8 @@ class LanceVectorStore:
     def is_vector_ready(self) -> bool:
         try:
             return self._open_table_or_none() is not None
-        except Exception:
+        except Exception as exc:
+            log.debug("LanceDB vector readiness check failed uri=%s error=%s", self.uri, exc)
             return False
 
     def get_capture_embedding_stats(
@@ -422,8 +426,13 @@ class LanceVectorStore:
         if ivfflat_probes is not None and hasattr(query, "nprobes"):
             try:
                 query = query.nprobes(max(1, int(ivfflat_probes)))
-            except Exception:
-                pass
+            except Exception as exc:
+                log.debug(
+                    "LanceDB nprobes ignored trace_id=%s probes=%s error=%s",
+                    trace_id,
+                    ivfflat_probes,
+                    exc,
+                )
         query = query.where(filter_expr, prefilter=True).select(["capture_id"]).limit(limit)
         rows = query.to_list()
 

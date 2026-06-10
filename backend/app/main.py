@@ -15,14 +15,15 @@ Usage:
 import asyncio
 import csv
 import io
+import json
 import logging
 import os
 import signal
 import sys
 import time
 import uuid
-from datetime import datetime
-from typing import Dict, List, Optional, Tuple
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional, Tuple
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 if PROJECT_ROOT not in sys.path:
@@ -49,6 +50,12 @@ from utils.seed_grid import generate_grid
 from worker.water_filter import filter_water_points
 
 log = logging.getLogger(__name__)
+
+
+def _utc_now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
 app = FastAPI(title="Street View Coverage Tracker")
 config = CrawlerConfig()
 VECTOR_BACKEND = get_configured_vector_backend()
@@ -56,6 +63,7 @@ BASE_DIR = PROJECT_ROOT
 oneshot_lock: Optional[asyncio.Lock] = None
 MODAL_ENVIRONMENT = os.getenv("MODAL_ENVIRONMENT", "google-map-walkers")
 SCAN_LOGS_DIR = os.path.join(BASE_DIR, "scan_logs")
+EVAL_LOGS_DIR = os.path.join(BASE_DIR, "eval", "results", "job_logs")
 SEEDS_DIR = os.path.join(BASE_DIR, "seeds")
 FRONTEND_DIST_DIR = os.path.join(BASE_DIR, "frontend", "dist")
 FRONTEND_DIST_INDEX = os.path.join(FRONTEND_DIST_DIR, "index.html")
@@ -100,25 +108,38 @@ if not os.path.isabs(config.CAPTURES_DIR):
 # Serve captured images (mount even before first capture exists).
 os.makedirs(config.CAPTURES_DIR, exist_ok=True)
 os.makedirs(SCAN_LOGS_DIR, exist_ok=True)
+os.makedirs(EVAL_LOGS_DIR, exist_ok=True)
 os.makedirs(SEEDS_DIR, exist_ok=True)
 app.mount("/captures", StaticFiles(directory=config.CAPTURES_DIR), name="captures")
 if os.path.isdir(FRONTEND_DIST_ASSETS):
     app.mount("/assets", StaticFiles(directory=FRONTEND_DIST_ASSETS), name="frontend-assets")
 
+METADATA_DB_AVAILABLE = True
+
 # Backfill mixed absolute/relative capture paths so frontend URLs stay stable.
-_migration_db = Database(config.DATABASE_URL)
-_path_stats = _migration_db.normalize_capture_filepaths(config.CAPTURES_DIR)
-_migration_db.close()
-if _path_stats["updated"] > 0:
-    log.info(
-        "Normalized capture paths in DB updated=%s total=%s",
-        _path_stats["updated"],
-        _path_stats["total"],
+try:
+    _migration_db = Database(config.DATABASE_URL)
+    _path_stats = _migration_db.normalize_capture_filepaths(config.CAPTURES_DIR)
+    _migration_db.close()
+    if _path_stats["updated"] > 0:
+        log.info(
+            "Normalized capture paths in DB updated=%s total=%s",
+            _path_stats["updated"],
+            _path_stats["total"],
+        )
+except Exception as exc:
+    METADATA_DB_AVAILABLE = False
+    log.warning(
+        "Metadata DB is unavailable; scan/search/locate endpoints require it. "
+        "Dataset scraping and frontend assets can still run. error=%s",
+        exc,
     )
 
 # ─── Active scan tracking ──────────────────────────────────────────────────
 # Maps scan_id -> list of subprocess PIDs (local mode) or Modal call IDs.
 active_scans: Dict[str, dict] = {}
+active_eval_jobs: Dict[str, dict] = {}
+active_eval_dataset_jobs: Dict[str, dict] = {}
 
 
 def _reconcile_modal_scan_state(scan_id: str, info: dict, now_ts: float) -> int:
@@ -190,7 +211,16 @@ def _reconcile_modal_scan_state(scan_id: str, info: dict, now_ts: float) -> int:
 
 
 def get_db():
-    return Database(config.DATABASE_URL)
+    try:
+        return Database(config.DATABASE_URL)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Metadata DB is unavailable. LanceDB stores vectors, but locate/search "
+                "need metadata tables for capture paths and coordinates."
+            ),
+        ) from exc
 
 
 def get_vector_store(db):
@@ -231,8 +261,8 @@ async def _shutdown_auto_index():
             await asyncio.wait_for(auto_index_task, timeout=5.0)
         except asyncio.TimeoutError:
             auto_index_task.cancel()
-        except Exception:
-            pass
+        except Exception as exc:
+            log.debug("Auto-index task shutdown failed: %s", exc)
     auto_index_task = None
     auto_index_stop_event = None
 
@@ -264,11 +294,98 @@ class ScanStopRequest(BaseModel):
     scan_id: Optional[str] = None
 
 
+class LocatorEvalRunRequest(BaseModel):
+    cases: str = "eval/datasets/locator_cases.csv"
+    endpoint: str = "http://127.0.0.1:8000/api/retrieval/locate-by-image"
+    output_dir: str = ""
+    settings_json: str = ""
+    limit: int = 0
+    concurrency: int = 1
+    timeout_seconds: float = 180.0
+    reject_family_score_threshold: Optional[float] = None
+
+
+class LocatorEvalDatasetScrapeRequest(BaseModel):
+    min_lat: float
+    min_lon: float
+    max_lat: float
+    max_lon: float
+    polygon_coords: Optional[List[List[float]]] = None
+    count: int = 50
+    output_dir: str = ""
+    split: str = "scraped"
+    seed: int = 42
+    views_per_panorama: int = 1
+    min_distance_meters: float = 20.0
+    allow_duplicate_panos: bool = False
+    allow_water: bool = False
+    no_db_ids: bool = True
+    headed: bool = False
+    delay_seconds: float = 0.5
+    heading_mode: str = "random"
+    headings_csv: str = ""
+    pitches_csv: str = "60,75,90"
+    width: int = 1280
+    height: int = 720
+
+
 # ─── Helpers ───────────────────────────────────────────────────────────────
 
 def _tail_text(data: bytes, max_chars: int = 1200) -> str:
     text = data.decode("utf-8", errors="replace")
     return text[-max_chars:]
+
+
+def _tail_file(path: str, max_chars: int = 3000) -> str:
+    try:
+        with open(path, "rb") as f:
+            f.seek(0, os.SEEK_END)
+            size = f.tell()
+            f.seek(max(0, size - max_chars * 2))
+            return _tail_text(f.read(), max_chars=max_chars)
+    except FileNotFoundError:
+        return ""
+
+
+def _project_path(path: str) -> str:
+    raw = str(path or "").strip()
+    if not raw:
+        return ""
+    return raw if os.path.isabs(raw) else os.path.join(BASE_DIR, raw)
+
+
+def _project_relative_path(path: str) -> str:
+    raw = os.path.abspath(str(path or ""))
+    try:
+        return os.path.relpath(raw, BASE_DIR) if raw.startswith(BASE_DIR) else raw
+    except ValueError:
+        return raw
+
+
+def _read_locator_eval_summary(output_dir: str) -> Optional[Dict[str, Any]]:
+    for name in ("combined_summary.json", "summary.json"):
+        path = os.path.join(output_dir, name)
+        if not os.path.exists(path):
+            continue
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as exc:
+            log.debug("Failed to read locator eval summary path=%s error=%s", path, exc)
+            return None
+    return None
+
+
+def _read_locator_dataset_metadata(output_dir: str) -> Optional[Dict[str, Any]]:
+    path = os.path.join(output_dir, "scrape_metadata.json")
+    if not os.path.exists(path):
+        return None
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as exc:
+        log.debug("Failed to read locator dataset metadata path=%s error=%s", path, exc)
+        return None
 
 
 def _make_seeds_csv_bytes(points: List[tuple]) -> bytes:
@@ -284,7 +401,7 @@ def _scan_log_path(scan_id: str) -> str:
 
 
 def _append_scan_log(scan_id: str, message: str):
-    ts = datetime.utcnow().isoformat()
+    ts = _utc_now_iso()
     with open(_scan_log_path(scan_id), "a", encoding="utf-8") as f:
         f.write(f"{ts} {message}\n")
 
@@ -363,7 +480,8 @@ async def _index_missing_embeddings_once(limit: int) -> dict:
             try:
                 with open(capture_path, "rb") as f:
                     valid_batch.append((int(row["capture_id"]), f.read()))
-            except Exception:
+            except Exception as exc:
+                log.debug("Auto-index skipped unreadable capture path=%s error=%s", capture_path, exc)
                 skipped += 1
         if valid_batch:
             try:
@@ -395,7 +513,8 @@ async def _index_missing_embeddings_once(limit: int) -> dict:
                         upserted
                     )
                 indexed += len(valid_batch)
-            except Exception:
+            except Exception as exc:
+                log.debug("Auto-index batch encode/upsert failed; falling back to per-image: %s", exc)
                 for capture_id, image_bytes in valid_batch:
                     try:
                         for embedder in embedders:
@@ -420,7 +539,8 @@ async def _index_missing_embeddings_once(limit: int) -> dict:
                                 model_key, 0
                             ) + 1
                         indexed += 1
-                    except Exception:
+                    except Exception as exc:
+                        log.debug("Auto-index skipped capture_id=%s error=%s", capture_id, exc)
                         skipped += 1
         return {
             "attempted": attempted,
@@ -952,8 +1072,6 @@ async def scan_area(req: ScanAreaRequest):
             detail=f"capture_profile must be one of: {', '.join(sorted(CAPTURE_PROFILES.keys()))}",
         )
     profile_cfg = _capture_profile_settings(capture_profile)
-    effective_capture_profile = capture_profile
-    profile_cfg = _capture_profile_settings(effective_capture_profile)
     profile_views = [
         (float(heading), float(pitch))
         for pitch in profile_cfg["pitches"]
@@ -964,7 +1082,7 @@ async def scan_area(req: ScanAreaRequest):
         _prepare_scan_targets,
         req.dict(),
         job_type,
-        effective_capture_profile,
+        capture_profile,
         profile_views,
     )
     raw_points: List[Tuple[float, float]] = prep["raw_points"]
@@ -995,7 +1113,7 @@ async def scan_area(req: ScanAreaRequest):
     scan_id = uuid.uuid4().hex[:12]
     _append_scan_log(
         scan_id,
-        f"job requested type={job_type} mode={req.mode} profile={effective_capture_profile} "
+        f"job requested type={job_type} mode={req.mode} profile={capture_profile} "
         f"bbox=({req.min_lat},{req.min_lon},{req.max_lat},{req.max_lon}) workers={req.num_workers} "
         f"step_m={req.step_meters} dedup_m={req.dedup_radius} fill_gap_m={req.fill_gap_meters} "
         f"raw={len(raw_points)} polygon_filtered={len(polygon_filtered_points)} "
@@ -1005,7 +1123,7 @@ async def scan_area(req: ScanAreaRequest):
 
     local_kwargs = {
         "job_kind": job_type,
-        "capture_profile": effective_capture_profile,
+        "capture_profile": capture_profile,
         "headings": profile_cfg["headings"],
         "pitches": profile_cfg["pitches"],
         "missing_only": bool(req.enrich_missing_only and job_type == "enrich"),
@@ -1013,7 +1131,7 @@ async def scan_area(req: ScanAreaRequest):
         "allow_existing_panorama": bool(job_type == "enrich"),
     }
     modal_kwargs = {
-        "capture_profile": effective_capture_profile,
+        "capture_profile": capture_profile,
         "capture_kind": job_type,
         "headings": profile_cfg["headings"],
         "pitches": profile_cfg["pitches"],
@@ -1041,7 +1159,7 @@ async def scan_area(req: ScanAreaRequest):
     return JSONResponse({
         "scan_id": scan_id,
         "job_type": job_type,
-        "capture_profile": effective_capture_profile,
+        "capture_profile": capture_profile,
         "total_seeds_generated": len(raw_points),
         "polygon_filtered_out": polygon_removed,
         "water_filtered": water_removed,
@@ -1202,8 +1320,8 @@ async def scan_stop(req: ScanStopRequest):
                 try:
                     stop_fn()
                     modal_stop_signals += 1
-                except Exception:
-                    pass
+                except Exception as exc:
+                    log.debug("Modal stop signal failed scan_id=%s error=%s", sid, exc)
             info["status"] = "stopping"
             _append_scan_log(sid, "modal stop signal sent")
 
@@ -1524,6 +1642,323 @@ async def _dispatch_modal_workers(
         "modal_environment": MODAL_ENVIRONMENT,
         "scan_log_url": f"/api/scan-log/{scan_id}",
     }
+
+
+# ─── Locator eval jobs ─────────────────────────────────────────────────────
+
+async def _watch_locator_dataset_job(
+    dataset_id: str, proc: Any, stdout_file: Any, stderr_file: Any
+):
+    try:
+        returncode = await proc.wait()
+        job = active_eval_dataset_jobs.get(dataset_id)
+        if not job:
+            return
+        job["returncode"] = int(returncode)
+        job["finished_at"] = _utc_now_iso()
+        if job.get("status") != "stopped":
+            job["status"] = "completed" if returncode == 0 else "failed"
+        job["metadata"] = _read_locator_dataset_metadata(str(job.get("output_dir") or ""))
+    finally:
+        try:
+            stdout_file.close()
+        except Exception as exc:
+            log.debug("Failed to close locator dataset stdout file dataset_id=%s error=%s", dataset_id, exc)
+        try:
+            stderr_file.close()
+        except Exception as exc:
+            log.debug("Failed to close locator dataset stderr file dataset_id=%s error=%s", dataset_id, exc)
+
+
+def _locator_dataset_job_payload(dataset_id: str) -> dict:
+    job = active_eval_dataset_jobs.get(dataset_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Unknown dataset job id")
+    proc = job.get("process")
+    if proc is not None and getattr(proc, "returncode", None) is None and job.get("status") != "stopped":
+        job["status"] = "running"
+    output_dir = str(job.get("output_dir") or "")
+    metadata = job.get("metadata") or _read_locator_dataset_metadata(output_dir)
+    manifest_path = str(job.get("manifest_path") or os.path.join(output_dir, "locator_cases.csv"))
+    return {
+        "dataset_id": dataset_id,
+        "status": job.get("status", "unknown"),
+        "returncode": job.get("returncode"),
+        "started_at": job.get("started_at"),
+        "finished_at": job.get("finished_at"),
+        "output_dir": output_dir,
+        "output_dir_relative": _project_relative_path(output_dir),
+        "manifest_path": manifest_path,
+        "manifest_path_relative": _project_relative_path(manifest_path),
+        "command": job.get("command"),
+        "stdout_tail": _tail_file(str(job.get("stdout_path") or "")),
+        "stderr_tail": _tail_file(str(job.get("stderr_path") or "")),
+        "metadata": metadata,
+    }
+
+
+@app.post("/api/eval/locator/dataset/scrape")
+async def scrape_locator_eval_dataset(req: LocatorEvalDatasetScrapeRequest):
+    min_lat = float(req.min_lat)
+    min_lon = float(req.min_lon)
+    max_lat = float(req.max_lat)
+    max_lon = float(req.max_lon)
+    if min_lat >= max_lat or min_lon >= max_lon:
+        raise HTTPException(status_code=400, detail="Invalid bbox; min must be below max")
+    count = max(1, min(500, int(req.count or 50)))
+    dataset_id = uuid.uuid4().hex[:12]
+    output_dir = _project_path(req.output_dir) if req.output_dir else os.path.join(
+        BASE_DIR, "eval", "datasets", f"frontend_scrape_{dataset_id}"
+    )
+    manifest_path = os.path.join(output_dir, "locator_cases.csv")
+    os.makedirs(output_dir, exist_ok=True)
+    stdout_path = os.path.join(EVAL_LOGS_DIR, f"locator_dataset_{dataset_id}.out.log")
+    stderr_path = os.path.join(EVAL_LOGS_DIR, f"locator_dataset_{dataset_id}.err.log")
+
+    polygon_coords = [
+        [float(point[0]), float(point[1])]
+        for point in list(req.polygon_coords or [])
+        if isinstance(point, list) and len(point) >= 2
+    ]
+    cmd = [
+        sys.executable,
+        "-m",
+        "eval.scrape_locator_dataset",
+        "--bbox",
+        f"{min_lat},{min_lon},{max_lat},{max_lon}",
+        "--count",
+        str(count),
+        "--output-dir",
+        output_dir,
+        "--output",
+        manifest_path,
+        "--split",
+        str(req.split or "scraped"),
+        "--seed",
+        str(int(req.seed or 42)),
+        "--views-per-panorama",
+        str(max(1, min(8, int(req.views_per_panorama or 1)))),
+        "--min-distance-meters",
+        str(max(0.0, float(req.min_distance_meters))),
+        "--delay-seconds",
+        str(max(0.0, float(req.delay_seconds))),
+        "--heading-mode",
+        str(req.heading_mode or "random"),
+        "--pitches-csv",
+        str(req.pitches_csv or "60,75,90"),
+        "--width",
+        str(max(320, min(4096, int(req.width or 1280)))),
+        "--height",
+        str(max(240, min(4096, int(req.height or 720)))),
+    ]
+    if polygon_coords:
+        cmd.extend(["--polygon", json.dumps(polygon_coords)])
+    if str(req.headings_csv or "").strip():
+        cmd.extend(["--headings-csv", str(req.headings_csv).strip()])
+    if bool(req.allow_duplicate_panos):
+        cmd.append("--allow-duplicate-panos")
+    if bool(req.allow_water):
+        cmd.append("--allow-water")
+    if bool(req.no_db_ids):
+        cmd.append("--no-db-ids")
+    if bool(req.headed):
+        cmd.append("--headed")
+
+    stdout_file = open(stdout_path, "wb")
+    stderr_file = open(stderr_path, "wb")
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            cwd=BASE_DIR,
+            stdout=stdout_file,
+            stderr=stderr_file,
+        )
+    except Exception:
+        stdout_file.close()
+        stderr_file.close()
+        raise
+
+    active_eval_dataset_jobs[dataset_id] = {
+        "process": proc,
+        "status": "running",
+        "returncode": None,
+        "started_at": _utc_now_iso(),
+        "finished_at": None,
+        "output_dir": output_dir,
+        "manifest_path": manifest_path,
+        "stdout_path": stdout_path,
+        "stderr_path": stderr_path,
+        "command": " ".join(cmd),
+        "metadata": None,
+    }
+    asyncio.create_task(
+        _watch_locator_dataset_job(dataset_id, proc, stdout_file, stderr_file)
+    )
+    return JSONResponse(_locator_dataset_job_payload(dataset_id))
+
+
+@app.get("/api/eval/locator/dataset/status/{dataset_id}")
+async def locator_eval_dataset_status(dataset_id: str):
+    return JSONResponse(_locator_dataset_job_payload(dataset_id))
+
+
+@app.post("/api/eval/locator/dataset/stop/{dataset_id}")
+async def stop_locator_eval_dataset(dataset_id: str):
+    job = active_eval_dataset_jobs.get(dataset_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Unknown dataset job id")
+    proc = job.get("process")
+    if proc is not None and getattr(proc, "returncode", None) is None:
+        job["status"] = "stopped"
+        job["finished_at"] = _utc_now_iso()
+        try:
+            proc.terminate()
+        except ProcessLookupError:
+            pass
+    return JSONResponse(_locator_dataset_job_payload(dataset_id))
+
+
+async def _watch_locator_eval_job(eval_id: str, proc: Any, stdout_file: Any, stderr_file: Any):
+    try:
+        returncode = await proc.wait()
+        job = active_eval_jobs.get(eval_id)
+        if not job:
+            return
+        job["returncode"] = int(returncode)
+        job["finished_at"] = _utc_now_iso()
+        if job.get("status") != "stopped":
+            job["status"] = "completed" if returncode == 0 else "failed"
+        job["summary"] = _read_locator_eval_summary(str(job.get("output_dir") or ""))
+    finally:
+        try:
+            stdout_file.close()
+        except Exception as exc:
+            log.debug("Failed to close locator eval stdout file eval_id=%s error=%s", eval_id, exc)
+        try:
+            stderr_file.close()
+        except Exception as exc:
+            log.debug("Failed to close locator eval stderr file eval_id=%s error=%s", eval_id, exc)
+
+
+def _locator_eval_job_payload(eval_id: str) -> dict:
+    job = active_eval_jobs.get(eval_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Unknown eval id")
+    proc = job.get("process")
+    if proc is not None and getattr(proc, "returncode", None) is None and job.get("status") != "stopped":
+        job["status"] = "running"
+    stdout_tail = _tail_file(str(job.get("stdout_path") or ""))
+    stderr_tail = _tail_file(str(job.get("stderr_path") or ""))
+    return {
+        "eval_id": eval_id,
+        "status": job.get("status", "unknown"),
+        "returncode": job.get("returncode"),
+        "started_at": job.get("started_at"),
+        "finished_at": job.get("finished_at"),
+        "output_dir": job.get("output_dir"),
+        "command": job.get("command"),
+        "stdout_tail": stdout_tail,
+        "stderr_tail": stderr_tail,
+        "summary": job.get("summary") or _read_locator_eval_summary(str(job.get("output_dir") or "")),
+    }
+
+
+@app.post("/api/eval/locator/start")
+async def start_locator_eval(req: LocatorEvalRunRequest):
+    cases_path = _project_path(req.cases)
+    if not cases_path or not os.path.exists(cases_path):
+        raise HTTPException(status_code=400, detail=f"Cases CSV not found: {req.cases}")
+    settings_json = str(req.settings_json or "").strip()
+    if settings_json:
+        try:
+            json.loads(settings_json)
+        except json.JSONDecodeError as exc:
+            raise HTTPException(status_code=400, detail=f"settings_json is invalid JSON: {exc}") from exc
+
+    eval_id = uuid.uuid4().hex[:12]
+    output_dir = _project_path(req.output_dir) if req.output_dir else os.path.join(
+        BASE_DIR, "eval", "results", f"frontend_locator_eval_{eval_id}"
+    )
+    os.makedirs(output_dir, exist_ok=True)
+    stdout_path = os.path.join(EVAL_LOGS_DIR, f"locator_eval_{eval_id}.out.log")
+    stderr_path = os.path.join(EVAL_LOGS_DIR, f"locator_eval_{eval_id}.err.log")
+
+    cmd = [
+        sys.executable,
+        "-m",
+        "eval.run_locator",
+        "--cases",
+        cases_path,
+        "--endpoint",
+        str(req.endpoint or "http://127.0.0.1:8000/api/retrieval/locate-by-image"),
+        "--output-dir",
+        output_dir,
+        "--timeout-seconds",
+        str(max(1.0, float(req.timeout_seconds))),
+        "--concurrency",
+        str(max(1, min(8, int(req.concurrency or 1)))),
+    ]
+    if int(req.limit or 0) > 0:
+        cmd.extend(["--limit", str(int(req.limit))])
+    if req.reject_family_score_threshold is not None:
+        cmd.extend(
+            [
+                "--reject-family-score-threshold",
+                str(float(req.reject_family_score_threshold)),
+            ]
+        )
+    if settings_json:
+        cmd.extend(["--settings-json-inline", settings_json])
+
+    stdout_file = open(stdout_path, "wb")
+    stderr_file = open(stderr_path, "wb")
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            cwd=BASE_DIR,
+            stdout=stdout_file,
+            stderr=stderr_file,
+        )
+    except Exception:
+        stdout_file.close()
+        stderr_file.close()
+        raise
+
+    active_eval_jobs[eval_id] = {
+        "process": proc,
+        "status": "running",
+        "returncode": None,
+        "started_at": _utc_now_iso(),
+        "finished_at": None,
+        "output_dir": output_dir,
+        "stdout_path": stdout_path,
+        "stderr_path": stderr_path,
+        "command": " ".join(cmd),
+        "summary": None,
+    }
+    asyncio.create_task(_watch_locator_eval_job(eval_id, proc, stdout_file, stderr_file))
+    return JSONResponse(_locator_eval_job_payload(eval_id))
+
+
+@app.get("/api/eval/locator/status/{eval_id}")
+async def locator_eval_status(eval_id: str):
+    return JSONResponse(_locator_eval_job_payload(eval_id))
+
+
+@app.post("/api/eval/locator/stop/{eval_id}")
+async def stop_locator_eval(eval_id: str):
+    job = active_eval_jobs.get(eval_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Unknown eval id")
+    proc = job.get("process")
+    if proc is not None and getattr(proc, "returncode", None) is None:
+        job["status"] = "stopped"
+        job["finished_at"] = _utc_now_iso()
+        try:
+            proc.terminate()
+        except ProcessLookupError:
+            pass
+    return JSONResponse(_locator_eval_job_payload(eval_id))
 
 
 # ─── Frontend shell ────────────────────────────────────────────────────────

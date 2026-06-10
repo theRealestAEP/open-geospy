@@ -5,6 +5,9 @@ import 'leaflet-draw/dist/leaflet.draw.css';
 import 'leaflet-draw';
 import { useLocation, useNavigate } from 'react-router-dom';
 
+import EvalPage from './components/EvalPage';
+import useLocateProgress from './hooks/useLocateProgress';
+
 const defaultScanForm = {
   minLat: 37.784,
   minLon: -122.438,
@@ -46,7 +49,7 @@ const orbPopupMoments = [
   'Testing the strongest alignments for geometric consistency.'
 ];
 const orbPopupPreviewStages = ['keypoints', 'scan', 'link', 'geometry'];
-const locateBattlefrontAudioPath = '/assets/loading.mp3';
+const locateBattlefrontAudioPath = '/assets/loading-4s.mp3';
 const locateBattlefrontStageLineDurationMs = 3000;
 const locateBattlefrontStagePauseMs = 700;
 const locateBattlefrontStageZoomDurationSeconds = 1.9;
@@ -335,7 +338,7 @@ function App() {
   const battlefrontMapModeActiveRef = useRef(false);
   const battlefrontMarkersHiddenRef = useRef(false);
   const locateBattlefrontAudioRef = useRef(null);
-  const locateBattlefrontAudioStopTimeoutRef = useRef(null);
+  const battlefrontMapResizeTimeoutRef = useRef(null);
   const locateBattlefrontSearchStartedAtRef = useRef(0);
   const locateBattlefrontSearchReadyPromiseRef = useRef(Promise.resolve());
   const locateBattlefrontSearchReadyTimeoutRef = useRef(null);
@@ -386,7 +389,6 @@ function App() {
   const [locateBusy, setLocateBusy] = useState(false);
   const [locateResults, setLocateResults] = useState([]);
   const [topLocateFamilyId, setTopLocateFamilyId] = useState(null);
-  const [locatePipeline, setLocatePipeline] = useState({ stages: [] });
   const [locateViewTab, setLocateViewTab] = useState('families');
   const [locateOrbStats, setLocateOrbStats] = useState(null);
   const [locateOrbComparisons, setLocateOrbComparisons] = useState([]);
@@ -395,8 +397,18 @@ function App() {
   const [locateOrbPopupPhase, setLocateOrbPopupPhase] = useState('idle');
   const [locateOrbPopupMoment, setLocateOrbPopupMoment] = useState(0);
   const [locateProgressId, setLocateProgressId] = useState('');
-  const [locateLiveProgress, setLocateLiveProgress] = useState(null);
   const [locateBattlefrontSequence, setLocateBattlefrontSequence] = useState(null);
+  const {
+    liveProgress: locateLiveProgress,
+    pipeline: locatePipeline,
+    setLiveProgress: setLocateLiveProgress,
+    setPipeline: setLocatePipeline
+  } = useLocateProgress({
+    locateBusy,
+    locateProgressId,
+    buildStagesFromProgress: buildLocatePipelineStagesFromProgress,
+    onMessage: setLocateStatus
+  });
   const [searchEmbeddingBase, setSearchEmbeddingBase] = useState('');
   const [locateEmbeddingBase, setLocateEmbeddingBase] = useState('');
   const [retrievalEmbeddingBaseOptions, setRetrievalEmbeddingBaseOptions] = useState([
@@ -414,10 +426,14 @@ function App() {
   const isScanPage = location.pathname === '/scan' || location.pathname === '/';
   const isSearchPage = location.pathname === '/search';
   const isLocatePage = location.pathname === '/locate';
+  const isEvalPage = location.pathname === '/eval';
   const currentWorkerLimit = scanForm.mode === 'modal' ? 100 : 32;
+  const locateBattlefrontSequenceActive =
+    isLocatePage && Boolean(locateBattlefrontModeEnabled && locateBattlefrontSequence);
   const battlefrontMapModeActive =
     isLocatePage && Boolean(locateBattlefrontModeEnabled && (locateBusy || locateBattlefrontSequence));
   const battlefrontMarkersHidden = battlefrontMapModeActive;
+  const locateActionLocked = locateBusy || locateBattlefrontSequenceActive;
 
   useEffect(() => {
     battlefrontMapModeActiveRef.current = battlefrontMapModeActive;
@@ -437,6 +453,57 @@ function App() {
       markersRef.current.clearLayers();
     }
   }, [battlefrontMapModeActive, battlefrontMarkersHidden]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) {
+      return undefined;
+    }
+    const container = map.getContainer();
+    container.classList.toggle('battlefrontMapLocked', battlefrontMapModeActive);
+    if (battlefrontMapModeActive) {
+      map.dragging.disable();
+      map.scrollWheelZoom.disable();
+      map.doubleClickZoom.disable();
+      map.boxZoom.disable();
+      map.keyboard.disable();
+      if (map.touchZoom) {
+        map.touchZoom.disable();
+      }
+      if (map.tap) {
+        map.tap.disable();
+      }
+    } else {
+      map.dragging.enable();
+      map.scrollWheelZoom.enable();
+      map.doubleClickZoom.enable();
+      map.boxZoom.enable();
+      map.keyboard.enable();
+      if (map.touchZoom) {
+        map.touchZoom.enable();
+      }
+      if (map.tap) {
+        map.tap.enable();
+      }
+    }
+    window.requestAnimationFrame(() => {
+      map.invalidateSize(false);
+    });
+    if (battlefrontMapResizeTimeoutRef.current) {
+      window.clearTimeout(battlefrontMapResizeTimeoutRef.current);
+    }
+    battlefrontMapResizeTimeoutRef.current = window.setTimeout(() => {
+      map.invalidateSize(false);
+      battlefrontMapResizeTimeoutRef.current = null;
+    }, 280);
+    return () => {
+      if (battlefrontMapResizeTimeoutRef.current) {
+        window.clearTimeout(battlefrontMapResizeTimeoutRef.current);
+        battlefrontMapResizeTimeoutRef.current = null;
+      }
+      container.classList.remove('battlefrontMapLocked');
+    };
+  }, [battlefrontMapModeActive]);
 
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
@@ -849,10 +916,6 @@ function App() {
 
   const stopLocateBattlefrontAudio = (options = {}) => {
     const { reset = true } = options;
-    if (locateBattlefrontAudioStopTimeoutRef.current) {
-      window.clearTimeout(locateBattlefrontAudioStopTimeoutRef.current);
-      locateBattlefrontAudioStopTimeoutRef.current = null;
-    }
     const audio = locateBattlefrontAudioRef.current;
     if (!audio) return;
     audio.pause();
@@ -865,7 +928,7 @@ function App() {
     }
   };
 
-  const playLocateBattlefrontAudio = (playbackMs = 0) => {
+  const playLocateBattlefrontAudio = () => {
     if (typeof window === 'undefined' || typeof Audio === 'undefined') {
       return;
     }
@@ -877,10 +940,6 @@ function App() {
       audio.volume = 0.72;
       locateBattlefrontAudioRef.current = audio;
     }
-    if (locateBattlefrontAudioStopTimeoutRef.current) {
-      window.clearTimeout(locateBattlefrontAudioStopTimeoutRef.current);
-      locateBattlefrontAudioStopTimeoutRef.current = null;
-    }
     audio.pause();
     try {
       audio.currentTime = 0;
@@ -890,20 +949,6 @@ function App() {
     void audio.play().catch((error) => {
       console.debug('battlefront audio playback blocked', error);
     });
-    const normalizedPlaybackMs = Math.max(0, Number(playbackMs || 0));
-    if (normalizedPlaybackMs > 0) {
-      locateBattlefrontAudioStopTimeoutRef.current = window.setTimeout(() => {
-        const activeAudio = locateBattlefrontAudioRef.current;
-        if (!activeAudio) return;
-        activeAudio.pause();
-        try {
-          activeAudio.currentTime = 0;
-        } catch (error) {
-          console.debug('battlefront audio stop failed', error);
-        }
-        locateBattlefrontAudioStopTimeoutRef.current = null;
-      }, normalizedPlaybackMs);
-    }
   };
 
   useEffect(() => {
@@ -917,10 +962,6 @@ function App() {
     audio.load();
     locateBattlefrontAudioRef.current = audio;
     return () => {
-      if (locateBattlefrontAudioStopTimeoutRef.current) {
-        window.clearTimeout(locateBattlefrontAudioStopTimeoutRef.current);
-        locateBattlefrontAudioStopTimeoutRef.current = null;
-      }
       audio.pause();
       try {
         audio.currentTime = 0;
@@ -1054,7 +1095,8 @@ function App() {
     if (
       location.pathname !== '/scan' &&
       location.pathname !== '/search' &&
-      location.pathname !== '/locate'
+      location.pathname !== '/locate' &&
+      location.pathname !== '/eval'
     ) {
       navigate('/scan', { replace: true });
     }
@@ -1120,40 +1162,6 @@ function App() {
     }, 1400);
     return () => window.clearInterval(intervalId);
   }, [locateOrbPopupOpen, locateOrbPopupPhase]);
-
-  useEffect(() => {
-    if (!locateBusy || !locateProgressId) {
-      return undefined;
-    }
-    let cancelled = false;
-    const pollProgress = async () => {
-      try {
-        const res = await fetch(`/api/retrieval/progress/${encodeURIComponent(locateProgressId)}`, {
-          cache: 'no-store'
-        });
-        if (!res.ok) {
-          return;
-        }
-        const body = await res.json();
-        if (cancelled) {
-          return;
-        }
-        setLocateLiveProgress(body);
-        setLocatePipeline({ stages: buildLocatePipelineStagesFromProgress(body) });
-        if (String(body?.message || '').trim()) {
-          setLocateStatus(String(body.message).trim());
-        }
-      } catch (error) {
-        console.error('locate progress error', error);
-      }
-    };
-    pollProgress();
-    const intervalId = window.setInterval(pollProgress, 700);
-    return () => {
-      cancelled = true;
-      window.clearInterval(intervalId);
-    };
-  }, [locateBusy, locateProgressId]);
 
   const setOneShotTarget = (lat, lon) => {
     setOneShotLat(lat.toFixed(7));
@@ -1726,6 +1734,9 @@ function App() {
   };
 
   const runImageLocate = async () => {
+    if (locateActionLocked) {
+      return;
+    }
     if (!retrievalFile) {
       setLocateStatus('Pick a reference image first.');
       return;
@@ -1927,6 +1938,7 @@ function App() {
 
     locateBattlefrontRevealStages.forEach((stage, index) => {
       const runStage = () => {
+        playLocateBattlefrontAudio();
         setLocateBattlefrontSequence({
           phase: stage.key,
           title: stage.title,
@@ -1944,12 +1956,6 @@ function App() {
           isZooming: false
         });
         queueLocateBattlefrontStep(Number(stage.zoomDelayMs || stage.lineLeadMs || 0), () => {
-          playLocateBattlefrontAudio(
-            Math.max(
-              0,
-              Math.round(Number(stage.duration || 0) * 1000) + Number(stage.settleMs || 0)
-            )
-          );
           setLocateBattlefrontSequence((prev) =>
             prev && prev.phase === stage.key
               ? {
@@ -2111,6 +2117,27 @@ function App() {
     setScanForm((prev) => ({ ...prev, [field]: value }));
   };
 
+  const locateEvalSettings = {
+    locateTopK,
+    locateEmbeddingBase,
+    locateOrbEnabled,
+    locateOrbTopN,
+    locateOrbWeight,
+    locateOrbFeatureCount,
+    locateOrbRansacTopK,
+    locateOrbIgnoreBottomRatio,
+    locateSam2MaskCars,
+    locateSam2MaskTrees,
+    retrievalMinSimilarity
+  };
+  const locateEvalBoundary = {
+    minLat: Number(scanForm.minLat),
+    minLon: Number(scanForm.minLon),
+    maxLat: Number(scanForm.maxLat),
+    maxLon: Number(scanForm.maxLon),
+    shapeType: scanShapeType || 'bbox',
+    polygonCoords: scanShapeType === 'polygon' ? selectedPolygonCoords : []
+  };
   const liveLocateProgress =
     locateLiveProgress && typeof locateLiveProgress === 'object' ? locateLiveProgress : null;
   const liveLocateOrbStats =
@@ -2301,8 +2328,12 @@ function App() {
 
   return (
     <div className="app">
-      <div ref={mapContainerRef} id="map" />
-      <aside id="sidebar">
+      <div
+        ref={mapContainerRef}
+        id="map"
+        className={battlefrontMapModeActive ? 'battlefrontMapFull' : ''}
+      />
+      <aside id="sidebar" className={battlefrontMapModeActive ? 'sidebarHidden' : ''}>
         <h1>Street View Coverage Tracker</h1>
         <div className="sidebarNav">
           <button
@@ -2322,6 +2353,12 @@ function App() {
             onClick={() => navigate('/locate')}
           >
             Locate
+          </button>
+          <button
+            className={isEvalPage ? '' : 'ghost'}
+            onClick={() => navigate('/eval')}
+          >
+            Eval
           </button>
         </div>
 
@@ -2761,8 +2798,8 @@ function App() {
                 )}
               </div>
               <div className="buttonRow">
-                <button onClick={runImageLocate} disabled={locateBusy}>
-                  {locateBusy ? 'Locating...' : 'Locate by image'}
+                <button onClick={runImageLocate} disabled={locateActionLocked}>
+                  {locateBusy ? 'Locating...' : locateBattlefrontSequenceActive ? 'Battlefront running...' : 'Locate by image'}
                 </button>
                 <button
                   className="ghost"
@@ -2989,6 +3026,13 @@ function App() {
               </div>
             </section>
           </>
+        ) : null}
+
+        {isEvalPage ? (
+          <EvalPage
+            locateSettings={locateEvalSettings}
+            boundary={locateEvalBoundary}
+          />
         ) : null}
       </aside>
       {isLocatePage && locateOrbPopupOpen ? (
@@ -3338,7 +3382,6 @@ function App() {
           <div className="battlefrontRevealOrbit battlefrontRevealOrbit-a" />
           <div className="battlefrontRevealOrbit battlefrontRevealOrbit-b" />
           <div className="battlefrontRevealHud">
-            <div className="battlefrontRevealEyebrow">Battlefront reveal mode</div>
             <div className="battlefrontRevealTitle">{locateBattlefrontHudTitle}</div>
             <div className="battlefrontRevealSubtitle">{locateBattlefrontHudSubtitle}</div>
             <div className="battlefrontRevealProgress">

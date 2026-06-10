@@ -145,8 +145,11 @@ class Database:
                 WHERE pano_id IS NOT NULL
                 """
             )
-        except Exception:
-            log.warning("Could not create unique pano_id index due to existing duplicates")
+        except Exception as exc:
+            log.warning(
+                "Could not create unique pano_id index due to existing duplicates: %s",
+                exc,
+            )
 
         self._ensure_column("captures", "is_black_frame", "INTEGER NOT NULL DEFAULT 0")
         self._ensure_column("captures", "quality_reason", "TEXT NOT NULL DEFAULT ''")
@@ -873,8 +876,13 @@ class Database:
             try:
                 self.conn.execute(f"ROLLBACK TO SAVEPOINT {savepoint_name}")
                 self.conn.execute(f"RELEASE SAVEPOINT {savepoint_name}")
-            except Exception:
-                pass
+            except Exception as rollback_exc:
+                log.debug(
+                    "retrieval_db trace_id=%s failed to rollback %s after probes error=%s",
+                    trace_id,
+                    savepoint_name,
+                    rollback_exc,
+                )
             if trace_id:
                 log.warning(
                     "retrieval_db trace_id=%s failed to set ivfflat.probes=%s error=%s",
@@ -885,11 +893,12 @@ class Database:
         params: List = [vector_literal, model_name, model_version]
         similarity_clause = ""
         if min_similarity is not None:
-            similarity_clause = "AND (1 - (ce.embedding <=> %s::vector)) >= %s"
-            params.extend([vector_literal, float(min_similarity)])
-        params.extend([vector_literal, limit])
+            similarity_clause = "AND (1 - (ce.embedding <=> q.v)) >= %s"
+            params.append(float(min_similarity))
+        params.append(limit)
         rows = self.conn.execute(
             f"""
+            WITH query_vector AS (SELECT %s::vector AS v)
             SELECT
                 c.id AS capture_id,
                 c.panorama_id,
@@ -901,14 +910,15 @@ class Database:
                 p.pano_id,
                 p.lat,
                 p.lon,
-                (1 - (ce.embedding <=> %s::vector)) AS similarity
-            FROM {table_name} ce
+                (1 - (ce.embedding <=> q.v)) AS similarity
+            FROM query_vector q
+            JOIN {table_name} ce ON TRUE
             JOIN captures c ON c.id = ce.capture_id
             JOIN panoramas p ON p.id = c.panorama_id
             WHERE ce.model_name = %s
               AND ce.model_version = %s
               {similarity_clause}
-            ORDER BY ce.embedding <=> %s::vector
+            ORDER BY ce.embedding <=> q.v
             LIMIT %s
             """,
             tuple(params),
