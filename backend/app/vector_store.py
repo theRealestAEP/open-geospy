@@ -88,7 +88,9 @@ class PostgresVectorStore:
         model_name: str,
         model_version: str,
         embedding_base: str = EMBEDDING_BASE_CLIP,
+        assume_new: bool = False,
     ) -> int:
+        # assume_new is a LanceDB-only optimization; Postgres upserts via ON CONFLICT.
         return self.db.upsert_capture_embeddings_batch(
             capture_vectors,
             model_name,
@@ -385,6 +387,7 @@ class LanceVectorStore:
         model_name: str,
         model_version: str,
         embedding_base: str = EMBEDDING_BASE_CLIP,
+        assume_new: bool = False,
     ) -> int:
         rows = list(capture_vectors)
         if not rows:
@@ -417,11 +420,14 @@ class LanceVectorStore:
             )
             return len(payload)
 
-        self._delete_existing_rows(
-            table,
-            payload,
-            include_embedding_base=include_embedding_base,
-        )
+        if not assume_new:
+            # Deleting by capture_id scans the whole table (no index), so callers
+            # that pre-filter to never-embedded ids should pass assume_new=True.
+            self._delete_existing_rows(
+                table,
+                payload,
+                include_embedding_base=include_embedding_base,
+            )
         table.add(payload)
         return len(payload)
 

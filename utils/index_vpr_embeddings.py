@@ -31,9 +31,8 @@ def _existing_capture_ids(vector_store, embedder) -> Set[int]:
         )
         if table is None:
             return set()
-        dataset = table.to_lance()
-        column = dataset.to_table(columns=["capture_id"]).column("capture_id")
-        return {int(v.as_py()) for v in column}
+        arrow = table.search().select(["capture_id"]).limit(1_000_000_000).to_arrow()
+        return {int(v.as_py()) for v in arrow.column("capture_id")}
     except Exception as exc:
         print(f"resume_detection_failed error={exc}; starting from --after-capture-id")
         return set()
@@ -124,6 +123,7 @@ def main() -> None:
                 embedder.model_name,
                 embedder.model_version,
                 embedding_base=EMBEDDING_BASE_VPR,
+                assume_new=True,
             )
             indexed += len(batch)
         except Exception as exc:
