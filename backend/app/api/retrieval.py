@@ -14,6 +14,7 @@ from pydantic import BaseModel
 from backend.app.clip_embeddings import (
     EMBEDDING_BASE_CLIP,
     EMBEDDING_BASE_PLACE,
+    EMBEDDING_BASE_VPR,
     encode_image_batch_for_all_models,
     get_retrieval_embedders,
     select_retrieval_embedders,
@@ -116,13 +117,13 @@ class RetrievalIndexRequest(BaseModel):
 
 def _normalize_embedding_base(value: Optional[str]) -> str:
     base = str(value or RETRIEVAL_EMBEDDING_BASE_DEFAULT).strip().lower()
-    if base in {EMBEDDING_BASE_CLIP, EMBEDDING_BASE_PLACE}:
+    if base in {EMBEDDING_BASE_CLIP, EMBEDDING_BASE_PLACE, EMBEDDING_BASE_VPR}:
         return base
     raise HTTPException(
         status_code=400,
         detail=(
             f"embedding_base must be one of: "
-            f"{EMBEDDING_BASE_CLIP}, {EMBEDDING_BASE_PLACE}"
+            f"{EMBEDDING_BASE_CLIP}, {EMBEDDING_BASE_PLACE}, {EMBEDDING_BASE_VPR}"
         ),
     )
 

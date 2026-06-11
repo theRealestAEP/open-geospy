@@ -13,6 +13,7 @@ log = logging.getLogger(__name__)
 
 EMBEDDING_BASE_CLIP = "clip"
 EMBEDDING_BASE_PLACE = "place"
+EMBEDDING_BASE_VPR = "vpr"
 
 DEFAULT_CLIP_MODEL = os.getenv("GEOSPY_CLIP_MODEL", "ViT-B-32")
 DEFAULT_CLIP_PRETRAINED = os.getenv("GEOSPY_CLIP_PRETRAINED", "laion2b_s34b_b79k")
@@ -43,6 +44,15 @@ DEFAULT_PLACE_TRUST_REMOTE_CODE = parse_boolish(
     default=False,
 )
 DEFAULT_HF_TOKEN = os.getenv("HF_TOKEN") or os.getenv("HUGGING_FACE_HUB_TOKEN")
+
+# Visual Place Recognition (VPR) model loaded via torch.hub. Unlike CLIP
+# (semantic similarity), VPR embeddings are trained so different views of the
+# same place are close and lookalike places elsewhere are far.
+DEFAULT_VPR_HUB_REPO = os.getenv("GEOSPY_VPR_HUB_REPO", "gmberton/eigenplaces").strip()
+DEFAULT_VPR_BACKBONE = os.getenv("GEOSPY_VPR_BACKBONE", "ResNet50").strip()
+DEFAULT_VPR_OUTPUT_DIM = int(os.getenv("GEOSPY_VPR_OUTPUT_DIM", "2048"))
+DEFAULT_VPR_VERSION = os.getenv("GEOSPY_VPR_MODEL_VERSION", "torch_hub_eigenplaces")
+DEFAULT_VPR_IMAGE_SIZE = int(os.getenv("GEOSPY_VPR_IMAGE_SIZE", "512"))
 
 
 @dataclass(frozen=True)
@@ -136,6 +146,23 @@ def _build_retrieval_model_configs() -> List[RetrievalModelConfig]:
                     trust_remote_code=DEFAULT_PLACE_TRUST_REMOTE_CODE,
                 )
             )
+
+    vpr_enabled = parse_boolish(
+        os.getenv("GEOSPY_VPR_MODEL_ENABLED"),
+        default=False,
+    )
+    if vpr_enabled:
+        configs.append(
+            RetrievalModelConfig(
+                model_id="vpr",
+                model_name=DEFAULT_VPR_HUB_REPO,
+                pretrained=f"{DEFAULT_VPR_BACKBONE}:{DEFAULT_VPR_OUTPUT_DIM}",
+                model_version=DEFAULT_VPR_VERSION,
+                weight=max(0.0, float(os.getenv("GEOSPY_RETRIEVAL_VPR_WEIGHT", "1.0"))),
+                embedding_base=EMBEDDING_BASE_VPR,
+                runtime="torch_hub",
+            )
+        )
 
     deduped: List[RetrievalModelConfig] = []
     seen = set()
@@ -429,7 +456,104 @@ class PlaceEmbedder:
         return batch[0] if batch else []
 
 
+class TorchHubVprEmbedder:
+    """VPR embedder loaded from torch.hub (default: EigenPlaces ResNet50, 2048-d).
+
+    The hub repo's `get_trained_model` entrypoint returns a model that maps an
+    ImageNet-normalized image tensor to an L2-normalized place descriptor."""
+
+    def __init__(
+        self,
+        model_id: str = "vpr",
+        model_name: str = DEFAULT_VPR_HUB_REPO,
+        pretrained: str = "",
+        model_version: str = DEFAULT_VPR_VERSION,
+        weight: float = 1.0,
+    ):
+        self.model_id = model_id
+        self.model_name = model_name
+        self.pretrained = str(pretrained or f"{DEFAULT_VPR_BACKBONE}:{DEFAULT_VPR_OUTPUT_DIM}")
+        self.model_version = model_version
+        self.weight = float(weight)
+        self.embedding_base = EMBEDDING_BASE_VPR
+        self.runtime = "torch_hub"
+        self._torch = None
+        self._model = None
+        self._preprocess = None
+        self._device = "cpu"
+        self._output_dim = DEFAULT_VPR_OUTPUT_DIM
+
+    def _parse_pretrained(self) -> Tuple[str, int]:
+        backbone, _, dim = self.pretrained.partition(":")
+        return backbone or DEFAULT_VPR_BACKBONE, int(dim or DEFAULT_VPR_OUTPUT_DIM)
+
+    def _ensure_loaded(self):
+        if self._model is not None:
+            return
+        try:
+            import torch
+            from torchvision import transforms
+        except ImportError as exc:
+            raise RuntimeError(
+                "VPR dependencies are missing. Install torch and torchvision."
+            ) from exc
+        self._torch = torch
+        self._device = resolve_torch_device(torch)
+        backbone, output_dim = self._parse_pretrained()
+        self._output_dim = output_dim
+        model = torch.hub.load(
+            self.model_name,
+            "get_trained_model",
+            backbone=backbone,
+            fc_output_dim=output_dim,
+            trust_repo=True,
+        )
+        model.eval()
+        model.to(self._device)
+        self._model = model
+        self._preprocess = transforms.Compose(
+            [
+                transforms.Resize((DEFAULT_VPR_IMAGE_SIZE, DEFAULT_VPR_IMAGE_SIZE)),
+                transforms.ToTensor(),
+                transforms.Normalize(
+                    mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
+                ),
+            ]
+        )
+
+    @property
+    def embedding_dim(self) -> int:
+        backbone_dim = self._parse_pretrained()[1]
+        return int(backbone_dim)
+
+    def encode_image_bytes_batch(self, image_bytes_batch: List[bytes]) -> List[List[float]]:
+        self._ensure_loaded()
+        if not image_bytes_batch:
+            return []
+        tensors = []
+        for image_bytes in image_bytes_batch:
+            image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+            tensors.append(self._preprocess(image))
+        batch = self._torch.stack(tensors, dim=0).to(self._device)
+        with self._torch.no_grad():
+            features = self._model(batch)
+            features = features / features.norm(dim=-1, keepdim=True).clamp(min=1e-12)
+        return features.detach().cpu().float().tolist()
+
+    def encode_image_bytes(self, image_bytes: bytes) -> List[float]:
+        batch = self.encode_image_bytes_batch([image_bytes])
+        return batch[0] if batch else []
+
+
 def _build_embedder(cfg: RetrievalModelConfig):
+    if cfg.runtime == "torch_hub":
+        return TorchHubVprEmbedder(
+            model_id=cfg.model_id,
+            model_name=cfg.model_name,
+            pretrained=cfg.pretrained,
+            model_version=cfg.model_version,
+            weight=cfg.weight,
+        )
     if cfg.model_id == "place" or cfg.runtime == "hf_transformers":
         return PlaceEmbedder(
             model_id=cfg.model_id,

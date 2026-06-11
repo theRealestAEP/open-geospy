@@ -2,7 +2,7 @@ import logging
 import os
 from typing import Dict, List, Optional, Sequence, Tuple
 
-from backend.app.clip_embeddings import EMBEDDING_BASE_CLIP
+from backend.app.clip_embeddings import EMBEDDING_BASE_CLIP, EMBEDDING_BASE_PLACE
 
 log = logging.getLogger(__name__)
 
@@ -179,22 +179,33 @@ class LanceVectorStore:
         self._connection_cache[self.uri] = conn
         return conn
 
-    def _open_table_or_none(self):
+    def _table_name_for_base(self, embedding_base: str) -> str:
+        # clip/place share the original 512-d table; other bases (e.g. vpr,
+        # 2048-d) get their own table because the vector column is a
+        # fixed-size list whose dimension is locked at table creation.
+        base = str(embedding_base or EMBEDDING_BASE_CLIP).strip().lower()
+        if base in {EMBEDDING_BASE_CLIP, EMBEDDING_BASE_PLACE}:
+            return self.table_name
+        return f"{self.table_name}__{base}"
+
+    def _open_table_or_none(self, table_name: Optional[str] = None):
         conn = self._connect()
+        target = table_name or self.table_name
         try:
             names = conn.table_names()
         except Exception as exc:
             log.warning("Failed to list LanceDB tables uri=%s error=%s", self.uri, exc)
             return None
-        if self.table_name not in set(names):
+        if target not in set(names):
             return None
-        return conn.open_table(self.table_name)
+        return conn.open_table(target)
 
-    def _require_table(self):
-        table = self._open_table_or_none()
+    def _require_table(self, table_name: Optional[str] = None):
+        target = table_name or self.table_name
+        table = self._open_table_or_none(target)
         if table is None:
             raise RuntimeError(
-                f"LanceDB table '{self.table_name}' not found at '{self.uri}'. "
+                f"LanceDB table '{target}' not found at '{self.uri}'. "
                 "Run the pgvector -> LanceDB sync script first."
             )
         return table
@@ -232,12 +243,19 @@ class LanceVectorStore:
             payload.append(row)
         return payload
 
-    def _create_table_for_payload(self, payload: List[dict], *, include_embedding_base: bool):
+    def _create_table_for_payload(
+        self,
+        payload: List[dict],
+        *,
+        include_embedding_base: bool,
+        table_name: Optional[str] = None,
+    ):
         conn = self._connect()
+        target = table_name or self.table_name
         try:
             import pyarrow as pa
         except ImportError:
-            return conn.create_table(self.table_name, data=payload)
+            return conn.create_table(target, data=payload)
 
         first_vector = list(payload[0].get(self.vector_column_name) or [])
         embedding_dim = len(first_vector)
@@ -259,7 +277,7 @@ class LanceVectorStore:
             )
         )
         return conn.create_table(
-            self.table_name,
+            target,
             data=payload,
             schema=pa.schema(fields),
         )
@@ -308,7 +326,7 @@ class LanceVectorStore:
         self, model_name: str, model_version: str, embedding_base: str = EMBEDDING_BASE_CLIP
     ) -> dict:
         total_captures = int(self.db.get_total_capture_count())
-        table = self._open_table_or_none()
+        table = self._open_table_or_none(self._table_name_for_base(embedding_base))
         if table is None:
             return {
                 "vector_enabled": False,
@@ -372,14 +390,15 @@ class LanceVectorStore:
         if not rows:
             return 0
 
-        table = self._open_table_or_none()
+        target_table_name = self._table_name_for_base(embedding_base)
+        table = self._open_table_or_none(target_table_name)
         include_embedding_base = bool(self.embedding_base_column)
         if table is not None:
             include_embedding_base = self._table_uses_embedding_base_column(table)
             if self.embedding_base_column and not include_embedding_base:
                 log.warning(
                     "LanceDB table=%s is missing embedding base column=%s; writing without it",
-                    self.table_name,
+                    target_table_name,
                     self.embedding_base_column,
                 )
 
@@ -394,6 +413,7 @@ class LanceVectorStore:
             self._create_table_for_payload(
                 payload,
                 include_embedding_base=include_embedding_base,
+                table_name=target_table_name,
             )
             return len(payload)
 
@@ -417,7 +437,7 @@ class LanceVectorStore:
         ivfflat_probes: Optional[int] = None,
         embedding_base: str = EMBEDDING_BASE_CLIP,
     ) -> List[dict]:
-        table = self._require_table()
+        table = self._require_table(self._table_name_for_base(embedding_base))
         limit = max(1, min(int(max_top_k), int(top_k)))
         filter_expr = self._model_filter(model_name, model_version, embedding_base)
         query = table.search(
