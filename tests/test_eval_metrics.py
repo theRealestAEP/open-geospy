@@ -87,6 +87,11 @@ class TestSummarizePositive:
         summary = summarize_positive(rows)
         assert summary["within_25m"] == 50.0
 
+    def test_zero_error_counts_as_hit(self):
+        rows = [positive_row(0.0), positive_row(500.0)]
+        summary = summarize_positive(rows)
+        assert summary["within_25m"] == 50.0
+
 
 class TestSummarizeNegative:
     def test_reject_counted_when_no_match(self):

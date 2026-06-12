@@ -97,6 +97,34 @@ def _evaluate_case(
         and case.expected_lon is not None
     ):
         error_m = round(haversine_m(case.expected_lat, case.expected_lon, pred_lat, pred_lon), 2)
+
+    raw_candidates = (
+        payload.get("raw_candidates") if isinstance(payload, dict) else None
+    ) or []
+    raw_candidate_count = len(raw_candidates) if raw_candidates else None
+    best_candidate_error_m = None
+    best_candidate_rank_100m = None
+    if (
+        raw_candidates
+        and not case.expected_reject
+        and case.expected_lat is not None
+        and case.expected_lon is not None
+    ):
+        best = None
+        for rank, cand in enumerate(raw_candidates, start=1):
+            cand_lat, cand_lon = cand.get("lat"), cand.get("lon")
+            if cand_lat is None or cand_lon is None:
+                continue
+            dist = haversine_m(
+                case.expected_lat, case.expected_lon, float(cand_lat), float(cand_lon)
+            )
+            if best is None or dist < best:
+                best = dist
+            if best_candidate_rank_100m is None and dist <= 100.0:
+                best_candidate_rank_100m = rank
+        if best is not None:
+            best_candidate_error_m = round(best, 2)
+
     result = {
         "case_id": case.case_id,
         "settings_id": settings.settings_id,
@@ -134,6 +162,10 @@ def _evaluate_case(
         "pred_lat": pred_lat,
         "pred_lon": pred_lon,
         "error_m": error_m,
+        "_raw_candidates": raw_candidates or None,
+        "raw_candidate_count": raw_candidate_count,
+        "best_candidate_error_m": best_candidate_error_m,
+        "best_candidate_rank_100m": best_candidate_rank_100m,
         "within_25m": int(error_m is not None and error_m <= 25.0),
         "within_50m": int(error_m is not None and error_m <= 50.0),
         "within_100m": int(error_m is not None and error_m <= 100.0),
@@ -188,7 +220,12 @@ def _settings_to_row(settings: LocateSettings) -> dict:
 
 
 def _settings_to_form_fields(settings: LocateSettings) -> Dict[str, str]:
-    fields: Dict[str, str] = {"top_k": str(max(1, int(settings.top_k)))}
+    # Always request the raw vector candidate pool so recall (truth retrieved
+    # at all?) can be separated from ranking (retrieved but outranked).
+    fields: Dict[str, str] = {
+        "top_k": str(max(1, int(settings.top_k))),
+        "debug_raw_candidates": "1",
+    }
     optional_values = {
         "min_similarity": settings.min_similarity,
         "embedding_base": settings.embedding_base,
@@ -477,6 +514,21 @@ def main() -> None:
             timeout_seconds=max(1.0, float(args.timeout_seconds)),
             concurrency=max(1, int(args.concurrency)),
         )
+        # Persist raw candidate pools (one jsonl line per case) so scoring
+        # changes can be replayed offline without re-running the backend.
+        pool_rows = []
+        for row in rows:
+            pool = row.pop("_raw_candidates", None)
+            if pool:
+                pool_rows.append(
+                    {
+                        "case_id": row.get("case_id"),
+                        "settings_id": row.get("settings_id"),
+                        "expected_lat": row.get("expected_lat"),
+                        "expected_lon": row.get("expected_lon"),
+                        "candidates": pool,
+                    }
+                )
         summary = _summarize_rows(
             settings=settings,
             endpoint_url=str(args.endpoint),
@@ -496,6 +548,14 @@ def main() -> None:
             os.makedirs(setting_output_dir, exist_ok=True)
         write_csv(os.path.join(setting_output_dir, "case_results.csv"), rows)
         write_json(os.path.join(setting_output_dir, "summary.json"), summary)
+        if pool_rows:
+            with open(
+                os.path.join(setting_output_dir, "raw_candidates.jsonl"),
+                "w",
+                encoding="utf-8",
+            ) as f:
+                for pool_row in pool_rows:
+                    f.write(json.dumps(pool_row) + "\n")
         print(
             f"settings_done={settings.settings_id} "
             f"within_50m={summary.get('within_50m')} median_error_m={summary.get('median_error_m')}"

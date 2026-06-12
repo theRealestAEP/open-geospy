@@ -1,0 +1,24 @@
+[
+  {
+    "settings_id": "ann-control",
+    "embedding_base": "vpr",
+    "top_k": 8
+  },
+  {
+    "settings_id": "ann-orb",
+    "embedding_base": "vpr",
+    "top_k": 8,
+    "orb_enabled": true
+  },
+  {
+    "settings_id": "ann-top25",
+    "embedding_base": "vpr",
+    "top_k": 25
+  },
+  {
+    "settings_id": "ann-top25-orb",
+    "embedding_base": "vpr",
+    "top_k": 25,
+    "orb_enabled": true
+  }
+]

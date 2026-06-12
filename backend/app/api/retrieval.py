@@ -304,6 +304,9 @@ def create_retrieval_router(
         min_similarity: Optional[float],
         vector_top_k: int,
         low_coverage_event: str,
+        candidate_multiplier: int = RETRIEVAL_SEARCH_CANDIDATE_MULTIPLIER,
+        max_candidates: int = RETRIEVAL_SEARCH_MAX_CANDIDATES,
+        pool_limit: Optional[int] = None,
     ) -> Tuple[
         List[dict],
         List[object],
@@ -337,10 +340,12 @@ def create_retrieval_router(
             retrieval_id=retrieval_id,
             min_similarity=min_similarity,
             top_k=vector_top_k,
-            candidate_multiplier=RETRIEVAL_SEARCH_CANDIDATE_MULTIPLIER,
-            max_candidates=RETRIEVAL_SEARCH_MAX_CANDIDATES,
+            candidate_multiplier=candidate_multiplier,
+            max_candidates=max_candidates,
         )
-        rows = rows[:vector_top_k]
+        # pool_limit lets locate keep the full candidate pool for ORB rerank
+        # and family clustering; plain search keeps the top_k contract.
+        rows = rows[: max(1, int(pool_limit))] if pool_limit else rows[:vector_top_k]
         if not rows and failed_models:
             raise HTTPException(
                 status_code=503,
@@ -527,6 +532,7 @@ def create_retrieval_router(
         orb_ignore_bottom_ratio: Optional[float] = Form(None),
         sam2_mask_cars: Optional[str] = Form(None),
         sam2_mask_trees: Optional[str] = Form(None),
+        debug_raw_candidates: Optional[str] = Form(None),
     ):
         retrieval_id = resolve_retrieval_id(client_retrieval_id)
         started = time.perf_counter()
@@ -687,6 +693,12 @@ def create_retrieval_router(
                 min_similarity=min_similarity,
                 vector_top_k=vector_top_k,
                 low_coverage_event="locate_models_skipped_low_coverage",
+                candidate_multiplier=LOCATE_SEARCH_CANDIDATE_MULTIPLIER,
+                max_candidates=LOCATE_SEARCH_MAX_CANDIDATES,
+                pool_limit=min(
+                    LOCATE_SEARCH_MAX_CANDIDATES,
+                    vector_top_k * LOCATE_SEARCH_CANDIDATE_MULTIPLIER,
+                ),
             )
             publish_progress(
                 phase="orb_rerank" if resolved_orb_enabled else "panorama_rerank",
@@ -928,6 +940,20 @@ def create_retrieval_router(
                         "stats": orb_stats,
                     },
                     "matches": family_rows,
+                    "raw_candidates": (
+                        [
+                            {
+                                "capture_id": row.get("capture_id") or row.get("id"),
+                                "panorama_id": row.get("panorama_id"),
+                                "lat": row.get("lat"),
+                                "lon": row.get("lon"),
+                                "score": row.get("score", row.get("similarity")),
+                            }
+                            for row in vector_rows
+                        ]
+                        if parse_boolish(debug_raw_candidates, default=False)
+                        else None
+                    ),
                     "pipeline": {"stages": pipeline_stages},
                     "timings_ms": {
                         "vector_search": vector_stage_ms,

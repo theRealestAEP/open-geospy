@@ -1,0 +1,13 @@
+[
+  {
+    "settings_id": "pool-control",
+    "embedding_base": "vpr",
+    "top_k": 8
+  },
+  {
+    "settings_id": "pool-orb",
+    "embedding_base": "vpr",
+    "top_k": 8,
+    "orb_enabled": true
+  }
+]

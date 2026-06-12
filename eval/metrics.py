@@ -83,7 +83,9 @@ def summarize_positive(rows: List[dict], *, seed: int = 42) -> Dict[str, object]
 
     def within(threshold: float) -> Dict[str, object]:
         hits = sum(
-            1 for row in rows if float(row.get("error_m") or 1e18) <= threshold
+            1
+            for row in rows
+            if row.get("error_m") is not None and float(row["error_m"]) <= threshold
         )
         return {
             "pct": round(100.0 * hits / total, 2),
