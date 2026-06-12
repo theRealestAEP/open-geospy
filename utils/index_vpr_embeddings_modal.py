@@ -1,22 +1,25 @@
 """Full-density VPR (EigenPlaces) backfill using Modal GPUs.
 
-Workers read images directly from the `geospy-captures` Modal Volume (populated
-by utils.modal_volume_upload), embed them on GPU, and return vectors; the local
-driver selects one capture id per distinct filepath (skipping duplicate rows),
-dispatches jobs, and writes results into the per-base LanceDB table.
+GPU workers read tar shards directly from the `geospy-captures` Modal Volume
+(one job per shard tar, staged by utils.modal_volume_upload), embed every
+member image, and return vectors; the local driver maps each image back to one
+capture id per distinct filepath (skipping duplicate DB rows) and writes
+results into the per-base LanceDB table. Already-embedded images are skipped
+via a per-shard skip list, which also makes re-runs cheap.
 
 Run with:
     GEOSPY_VECTOR_BACKEND=lancedb GEOSPY_VPR_MODEL_ENABLED=1 \
-      python -m utils.index_vpr_embeddings_modal --limit 256   # smoke test
+      python -m utils.index_vpr_embeddings_modal --limit-shards 1   # smoke test
     GEOSPY_VECTOR_BACKEND=lancedb GEOSPY_VPR_MODEL_ENABLED=1 \
-      python -m utils.index_vpr_embeddings_modal               # everything
+      python -m utils.index_vpr_embeddings_modal                    # everything
 """
 
 import argparse
+import json
 import os
 import time
-from collections import deque
-from typing import Dict, List, Set, Tuple
+from collections import defaultdict, deque
+from typing import Dict, List, Set
 
 try:
     from env_bootstrap import load_project_env
@@ -30,12 +33,15 @@ import modal
 
 VOLUME_NAME = os.getenv("GEOSPY_MODAL_CAPTURES_VOLUME", "geospy-captures")
 VOLUME_MOUNT = "/vol"
+STAGING_DIR = "_staging"
+FILEPATH_PREFIX = "captures/"  # DB filepaths = captures/<pano>/<file>; tar members = <pano>/<file>
 GPU_TYPE = os.getenv("GEOSPY_MODAL_VPR_GPU", "A10G")
 DEFAULT_ENVIRONMENT = (
     os.getenv("GEOSPY_MODAL_EMBED_ENVIRONMENT")
     or os.getenv("MODAL_ENVIRONMENT")
     or "google-map-walkers"
 )
+DEFAULT_MANIFEST = os.path.join("tmp", "modal_upload", "manifest.json")
 
 app = modal.App("geospy-vpr-backfill")
 volume = modal.Volume.from_name(VOLUME_NAME, create_if_missing=False)
@@ -53,14 +59,22 @@ vpr_image = modal.Image.debian_slim(python_version="3.12").pip_install(
     volumes={VOLUME_MOUNT: volume},
     timeout=1800,
 )
-def embed_volume_batch(job: dict) -> dict:
-    """Embed images stored on the volume. job = {relpaths, hub_repo, backbone, output_dim}."""
+def embed_shard_tar(job: dict) -> dict:
+    """Embed all images in one shard tar on the volume.
+
+    job = {tar_name, skip (member names), hub_repo, backbone, output_dim,
+           image_size, micro_batch}
+    """
+    import io
+    import tarfile
+
     import numpy as np
     import torch
     from PIL import Image
     from torchvision import transforms
 
-    relpaths: List[str] = list(job["relpaths"])
+    tar_name: str = job["tar_name"]
+    skip: Set[str] = set(job.get("skip") or [])
     hub_repo: str = job["hub_repo"]
     backbone: str = job["backbone"]
     output_dim: int = int(job["output_dim"])
@@ -93,8 +107,9 @@ def embed_volume_batch(job: dict) -> dict:
         ]
     )
 
-    ok_relpaths: List[str] = []
-    skipped: List[str] = []
+    members: List[str] = []
+    decode_failed = 0
+    skipped = 0
     chunks: List[np.ndarray] = []
     tensors: List[torch.Tensor] = []
 
@@ -108,21 +123,37 @@ def embed_volume_batch(job: dict) -> dict:
         chunks.append(feats.cpu().float().numpy())
         tensors.clear()
 
-    for relpath in relpaths:
-        path = os.path.join(VOLUME_MOUNT, relpath)
-        try:
-            with Image.open(path) as img:
-                tensors.append(preprocess(img.convert("RGB")))
-            ok_relpaths.append(relpath)
-        except Exception:
-            skipped.append(relpath)
-            continue
-        if len(tensors) >= micro_batch:
-            flush_micro()
+    tar_path = os.path.join(VOLUME_MOUNT, STAGING_DIR, tar_name)
+    with tarfile.open(tar_path) as tf:
+        for member in tf:
+            if not member.isfile() or not member.name.endswith(".jpg"):
+                continue
+            if member.name in skip:
+                skipped += 1
+                continue
+            fh = tf.extractfile(member)
+            if fh is None:
+                decode_failed += 1
+                continue
+            try:
+                with Image.open(io.BytesIO(fh.read())) as img:
+                    tensors.append(preprocess(img.convert("RGB")))
+                members.append(member.name)
+            except Exception:
+                decode_failed += 1
+                continue
+            if len(tensors) >= micro_batch:
+                flush_micro()
     flush_micro()
 
     vectors = np.concatenate(chunks, axis=0) if chunks else np.zeros((0, output_dim), "f4")
-    return {"relpaths": ok_relpaths, "vectors": vectors, "skipped": skipped}
+    return {
+        "tar_name": tar_name,
+        "members": members,
+        "vectors": vectors,
+        "skipped": skipped,
+        "decode_failed": decode_failed,
+    }
 
 
 def _embedded_filepaths(vector_store, db) -> Set[str]:
@@ -151,15 +182,19 @@ def _embedded_filepaths(vector_store, db) -> Set[str]:
 
 
 def main() -> None:
-    from backend.app.clip_embeddings import EMBEDDING_BASE_VPR, select_retrieval_embedders
+    from backend.app.clip_embeddings import (
+        DEFAULT_VPR_IMAGE_SIZE,
+        EMBEDDING_BASE_VPR,
+        select_retrieval_embedders,
+    )
     from backend.app.vector_store import build_vector_store
     from config import CrawlerConfig
     from db.postgres_database import Database
 
     parser = argparse.ArgumentParser(description="Full VPR backfill on Modal GPUs.")
-    parser.add_argument("--job-size", type=int, default=512, help="Images per GPU job.")
+    parser.add_argument("--manifest", default=DEFAULT_MANIFEST)
     parser.add_argument("--workers", type=int, default=10, help="Concurrent GPU containers.")
-    parser.add_argument("--limit", type=int, default=0, help="Max images (0 = all).")
+    parser.add_argument("--limit-shards", type=int, default=0, help="Max shard tars (0 = all).")
     parser.add_argument("--environment", default=DEFAULT_ENVIRONMENT)
     parser.add_argument("--retries", type=int, default=1)
     args = parser.parse_args()
@@ -175,6 +210,17 @@ def main() -> None:
     if vector_store.backend_name != "lancedb":
         raise SystemExit("Run with GEOSPY_VECTOR_BACKEND=lancedb.")
 
+    with open(args.manifest) as fh:
+        manifest = json.load(fh)
+    # extracted_files marks shards whose tar has not been rebuilt server-side yet.
+    shards = [
+        s
+        for s in manifest["shards"]
+        if s["status"] == "done" and not s.get("extracted_files")
+    ]
+    if args.limit_shards > 0:
+        shards = shards[: args.limit_shards]
+
     print("selecting distinct filepaths ...", flush=True)
     rows = db.conn.execute(
         """
@@ -184,23 +230,26 @@ def main() -> None:
         ORDER BY filepath, id
         """
     ).fetchall()
-    candidates: List[Tuple[int, str]] = [(int(r["id"]), str(r["filepath"])) for r in rows]
+    id_by_relpath: Dict[str, int] = {
+        str(r["filepath"]): int(r["id"]) for r in rows
+    }
     embedded = _embedded_filepaths(vector_store, db)
-    pending = [(cid, fp) for cid, fp in candidates if fp not in embedded]
-    if args.limit > 0:
-        pending = pending[: args.limit]
+
+    skip_by_dir: Dict[str, List[str]] = defaultdict(list)
+    for fp in embedded:
+        member = fp[len(FILEPATH_PREFIX) :] if fp.startswith(FILEPATH_PREFIX) else fp
+        skip_by_dir[member.split("/", 1)[0]].append(member)
+
     print(
-        f"distinct_files={len(candidates)} already_embedded={len(embedded)} "
-        f"pending={len(pending)} model={embedder.model_name}:{embedder.model_version} "
+        f"shard_tars={len(shards)} distinct_files={len(id_by_relpath)} "
+        f"already_embedded={len(embedded)} "
+        f"model={embedder.model_name}:{embedder.model_version} "
         f"gpu={GPU_TYPE} workers={args.workers}",
         flush=True,
     )
-    if not pending:
+    if not shards:
         db.close()
         return
-
-    id_by_relpath: Dict[str, int] = {fp: cid for cid, fp in pending}
-    from backend.app.clip_embeddings import DEFAULT_VPR_IMAGE_SIZE
 
     job_payload_base = {
         "hub_repo": embedder.model_name,
@@ -209,25 +258,29 @@ def main() -> None:
         "image_size": DEFAULT_VPR_IMAGE_SIZE,
     }
     jobs = deque(
-        {"relpaths": [fp for _, fp in pending[i : i + args.job_size]], "attempt": 0}
-        for i in range(0, len(pending), args.job_size)
+        {
+            "tar_name": f"{s['id']}.tar",
+            "skip": [m for d in s["dirs"] for m in skip_by_dir.get(d, [])],
+            "attempt": 0,
+        }
+        for s in shards
     )
 
     indexed = 0
     skipped = 0
     failed_jobs = 0
+    shards_done = 0
     started = time.time()
 
     def handle_result(payload: dict):
-        nonlocal indexed, skipped
-        relpaths = payload["relpaths"]
+        nonlocal indexed, skipped, shards_done
+        skipped += payload["skipped"] + payload["decode_failed"]
         vectors = payload["vectors"]
-        skipped += len(payload["skipped"])
-        batch = [
-            (id_by_relpath[rp], vectors[i].tolist())
-            for i, rp in enumerate(relpaths)
-            if rp in id_by_relpath
-        ]
+        batch = []
+        for i, member in enumerate(payload["members"]):
+            cid = id_by_relpath.get(FILEPATH_PREFIX + member)
+            if cid is not None:
+                batch.append((cid, vectors[i].tolist()))
         if batch:
             vector_store.upsert_capture_embeddings_batch(
                 batch,
@@ -237,10 +290,11 @@ def main() -> None:
                 assume_new=True,
             )
             indexed += len(batch)
+        shards_done += 1
         rate = indexed / max(time.time() - started, 1e-9)
         print(
-            f"progress indexed={indexed} skipped={skipped} pending={len(pending)} "
-            f"rate_img_s={rate:.1f}",
+            f"progress shards={shards_done}/{len(shards)} indexed={indexed} "
+            f"skipped={skipped} rate_img_s={rate:.1f} tar={payload['tar_name']}",
             flush=True,
         )
 
@@ -249,7 +303,7 @@ def main() -> None:
             active = []
             while jobs and len(active) < args.workers:
                 job = jobs.popleft()
-                handle = embed_volume_batch.spawn({**job_payload_base, **job})
+                handle = embed_shard_tar.spawn({**job_payload_base, **job})
                 active.append((job, handle))
             for job, handle in active:
                 try:
@@ -258,16 +312,16 @@ def main() -> None:
                     if job["attempt"] < args.retries:
                         job["attempt"] += 1
                         jobs.append(job)
-                        print(f"job_retry error={exc}", flush=True)
+                        print(f"job_retry tar={job['tar_name']} error={exc}", flush=True)
                     else:
                         failed_jobs += 1
-                        print(f"job_failed count={len(job['relpaths'])} error={exc}", flush=True)
+                        print(f"job_failed tar={job['tar_name']} error={exc}", flush=True)
 
     db.close()
     elapsed = time.time() - started
     print(
-        f"done indexed={indexed} skipped={skipped} failed_jobs={failed_jobs} "
-        f"elapsed_s={elapsed:.0f}",
+        f"done shards={shards_done} indexed={indexed} skipped={skipped} "
+        f"failed_jobs={failed_jobs} elapsed_s={elapsed:.0f}",
         flush=True,
     )
 

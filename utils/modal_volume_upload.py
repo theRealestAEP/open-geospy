@@ -1,15 +1,18 @@
 """Prep and run an upload of the local captures dataset to a Modal Volume.
 
-Millions of small files upload terribly one-at-a-time, so this packs panorama
-directories into uncompressed tar shards, uploads each shard to a staging path
-on the volume, then untars it server-side via a small Modal function.
+Millions of small files upload terribly one-at-a-time (and Modal Volume v1
+chokes past a few hundred thousand files), so this packs panorama directories
+into uncompressed tar shards and stores the shards themselves on the volume.
+Consumers (the GPU embedding backfill) read tar members directly.
 
 Workflow:
     1. plan    -- local only, no network. Scans the captures dir, groups pano
                   dirs into ~N GiB shards, writes a resumable manifest.
-    2. upload  -- tars + uploads + extracts pending shards, updating the
-                  manifest after each (safe to interrupt and re-run).
-    3. status  -- prints manifest progress.
+    2. upload  -- tars + uploads pending shards, updating the manifest after
+                  each (safe to interrupt and re-run).
+    3. retar   -- server-side: rebuilds staging tars for shards that were
+                  extracted to loose files by the old flow.
+    4. status  -- prints manifest progress.
 
 Examples:
     python -m utils.modal_volume_upload plan
@@ -56,21 +59,47 @@ volume = modal.Volume.from_name(VOLUME_NAME, create_if_missing=True)
 extract_image = modal.Image.debian_slim(python_version="3.12")
 
 
-@app.function(image=extract_image, volumes={VOLUME_MOUNT: volume}, timeout=3600, cpu=2.0)
-def extract_shard(tar_name: str) -> dict:
+@app.function(
+    image=extract_image,
+    volumes={VOLUME_MOUNT: volume},
+    timeout=3600,
+    cpu=2.0,
+    max_inputs=1,
+)
+def retar_shard(job: dict) -> dict:
+    """Rebuild a staging tar from loose files the old extract flow left behind.
+
+    The volume is at its v1 file-count cap, so the tar is built on
+    container-local disk and the loose extracted files are deleted (freeing
+    inodes) before the tar is moved onto the volume.
+    """
+    import shutil
     import tarfile
 
+    tar_name: str = job["tar_name"]
+    dirs: List[str] = list(job["dirs"])
     tar_path = os.path.join(VOLUME_MOUNT, STAGING_DIR, tar_name)
-    dest = os.path.join(VOLUME_MOUNT, EXTRACT_ROOT)
-    os.makedirs(dest, exist_ok=True)
-    extracted = 0
-    with tarfile.open(tar_path) as tf:
-        for member in tf:
-            tf.extract(member, dest, filter="data")
-            extracted += 1
-    os.remove(tar_path)
+    if os.path.exists(tar_path):
+        return {"tar_name": tar_name, "files": -1}
+
+    files = 0
+    local_tar = os.path.join("/tmp", tar_name)
+    with tarfile.open(local_tar, "w") as tf:
+        for d in dirs:
+            src = os.path.join(VOLUME_MOUNT, EXTRACT_ROOT, d)
+            if not os.path.isdir(src):
+                continue
+            for name in sorted(os.listdir(src)):
+                tf.add(os.path.join(src, name), arcname=f"{d}/{name}", recursive=False)
+                files += 1
+    for d in dirs:
+        src = os.path.join(VOLUME_MOUNT, EXTRACT_ROOT, d)
+        if os.path.isdir(src):
+            shutil.rmtree(src)
     volume.commit()
-    return {"tar_name": tar_name, "extracted": extracted}
+    shutil.move(local_tar, tar_path)
+    volume.commit()
+    return {"tar_name": tar_name, "files": files}
 
 
 def _load_manifest(path: str) -> dict:
@@ -228,12 +257,11 @@ def cmd_upload(args: argparse.Namespace) -> None:
                 print(f"[{shard['id']}] attempt {attempt + 1} failed: {exc}", flush=True)
         return False
 
-    with app.run(environment_name=args.environment):
-        with ThreadPoolExecutor(max_workers=max(1, args.concurrency)) as pool:
-            futures = {pool.submit(run_shard, shard): shard["id"] for shard in pending}
-            for future in as_completed(futures):
-                if not future.result():
-                    failed.append(futures[future])
+    with ThreadPoolExecutor(max_workers=max(1, args.concurrency)) as pool:
+        futures = {pool.submit(run_shard, shard): shard["id"] for shard in pending}
+        for future in as_completed(futures):
+            if not future.result():
+                failed.append(futures[future])
 
     done = sum(1 for s in manifest["shards"] if s["status"] == "done")
     print(f"\nupload session finished: {done}/{len(manifest['shards'])} shards done")
@@ -248,40 +276,61 @@ def _process_shard(args: argparse.Namespace, manifest: dict, shard: dict, tar_di
     tar_name = f"{sid}.tar"
     tar_path = os.path.join(tar_dir, tar_name)
 
-    if shard["status"] != "uploaded":
-        est_gb = shard["est_bytes"] / (1024**3)
-        print(f"[{sid}] tarring {len(shard['dirs'])} dirs (~{est_gb:.1f} GiB) ...", flush=True)
-        t0 = time.time()
-        _make_tar(captures_dir, shard["dirs"], tar_path)
-        actual_gb = os.path.getsize(tar_path) / (1024**3)
-        print(f"[{sid}] tarred {actual_gb:.1f} GiB in {time.time() - t0:.0f}s; uploading ...", flush=True)
+    est_gb = shard["est_bytes"] / (1024**3)
+    print(f"[{sid}] tarring {len(shard['dirs'])} dirs (~{est_gb:.1f} GiB) ...", flush=True)
+    t0 = time.time()
+    _make_tar(captures_dir, shard["dirs"], tar_path)
+    actual_gb = os.path.getsize(tar_path) / (1024**3)
+    print(f"[{sid}] tarred {actual_gb:.1f} GiB in {time.time() - t0:.0f}s; uploading ...", flush=True)
 
-        t0 = time.time()
-        vol = modal.Volume.from_name(
-            manifest["volume_name"],
-            create_if_missing=True,
-            environment_name=args.environment,
-        )
-        with vol.batch_upload(force=True) as batch:
-            batch.put_file(tar_path, f"/{STAGING_DIR}/{tar_name}")
-        upload_s = time.time() - t0
-        shard["status"] = "uploaded"
-        _save_manifest(args.manifest, manifest)
-        print(
-            f"[{sid}] uploaded in {upload_s:.0f}s "
-            f"({actual_gb * 8 * 1024 / max(upload_s, 1e-9):.0f} Mbps); extracting ...",
-            flush=True,
-        )
-    else:
-        print(f"[{sid}] already uploaded; extracting ...", flush=True)
-
-    result = extract_shard.remote(tar_name)
-    if os.path.exists(tar_path):
-        os.remove(tar_path)
+    t0 = time.time()
+    vol = modal.Volume.from_name(
+        manifest["volume_name"],
+        create_if_missing=True,
+        environment_name=args.environment,
+    )
+    with vol.batch_upload(force=True) as batch:
+        batch.put_file(tar_path, f"/{STAGING_DIR}/{tar_name}")
+    upload_s = time.time() - t0
+    os.remove(tar_path)
     shard["status"] = "done"
-    shard["extracted_files"] = result["extracted"]
     _save_manifest(args.manifest, manifest)
-    print(f"[{sid}] done: extracted {result['extracted']} entries", flush=True)
+    print(
+        f"[{sid}] done: uploaded in {upload_s:.0f}s "
+        f"({actual_gb * 8 * 1024 / max(upload_s, 1e-9):.0f} Mbps)",
+        flush=True,
+    )
+
+
+def cmd_retar(args: argparse.Namespace) -> None:
+    """Server-side: rebuild staging tars for shards the old flow extracted."""
+    manifest = _load_manifest(args.manifest)
+    targets = [s for s in manifest["shards"] if s.get("extracted_files")]
+    print(f"shards needing server-side retar: {len(targets)}", flush=True)
+    if not targets:
+        return
+
+    def run_retar(shard: dict) -> bool:
+        sid = shard["id"]
+        try:
+            result = retar_shard.remote({"tar_name": f"{sid}.tar", "dirs": shard["dirs"]})
+            shard.pop("extracted_files", None)
+            shard["retarred_files"] = result["files"]
+            _save_manifest(args.manifest, manifest)
+            print(f"[{sid}] retarred files={result['files']}", flush=True)
+            return True
+        except Exception as exc:
+            print(f"[{sid}] retar failed: {exc}", flush=True)
+            return False
+
+    failed = 0
+    with app.run(environment_name=args.environment):
+        with ThreadPoolExecutor(max_workers=max(1, args.concurrency)) as pool:
+            for ok in pool.map(run_retar, targets):
+                failed += 0 if ok else 1
+    print(f"retar finished failed={failed}", flush=True)
+    if failed:
+        raise SystemExit(1)
 
 
 def cmd_status(args: argparse.Namespace) -> None:
@@ -313,6 +362,10 @@ def main(argv: Optional[List[str]] = None) -> None:
     p_up.add_argument("--concurrency", type=int, default=3, help="Concurrent shard pipelines.")
     p_up.add_argument("--tar-dir", default=None, help="Where to write temp tars (default: manifest dir).")
     p_up.set_defaults(func=cmd_upload)
+
+    p_rt = sub.add_parser("retar", help="Rebuild staging tars for previously extracted shards.")
+    p_rt.add_argument("--concurrency", type=int, default=4)
+    p_rt.set_defaults(func=cmd_retar)
 
     p_st = sub.add_parser("status", help="Show manifest progress.")
     p_st.set_defaults(func=cmd_status)
