@@ -48,7 +48,12 @@ body {
   pointer-events: none;
 }
 
-h1 { margin: 0 0 12px; font-size: 18px; }
+h1 {
+  margin: 0 0 14px;
+  font-size: 18px;
+  letter-spacing: 0.01em;
+  color: #f0f4ff;
+}
 
 .sidebarNav {
   display: flex;
@@ -64,8 +69,21 @@ h1 { margin: 0 0 12px; font-size: 18px; }
   min-height: 40px;
 }
 
-h2 { margin: 0 0 10px; font-size: 14px; }
-.card { background: #16213e; border: 1px solid #2f3b65; border-radius: 10px; padding: 12px; margin-bottom: 12px; }
+h2 {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: #e8eeff;
+}
+.card {
+  background: #16213e;
+  border: 1px solid #2f3b65;
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 14px;
+  box-shadow: 0 10px 24px rgba(4, 8, 20, 0.18);
+}
 .row { display: flex; justify-content: space-between; margin-bottom: 6px; }
 label { display: block; font-size: 12px; margin-bottom: 8px; color: #b8c0e0; }
 .checkboxLabel {
@@ -91,6 +109,12 @@ input, select, textarea {
   background: #0f1630;
   color: #ecf0ff;
   padding: 8px;
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: rgba(76, 149, 255, 0.75);
+  box-shadow: 0 0 0 2px rgba(76, 149, 255, 0.18);
 }
 textarea {
   min-height: 180px;
@@ -101,6 +125,8 @@ textarea {
 }
 button {
   appearance: none;
+  font: inherit;
+  font-size: 13px;
   border: 1px solid rgba(122, 157, 255, 0.28);
   border-radius: 12px;
   background: linear-gradient(180deg, #4c95ff 0%, #2f6fe0 100%);
@@ -207,8 +233,8 @@ button.compact:active:not(:disabled) {
 .jobActions button {
   padding: 6px 8px;
 }
-.status { margin-top: 8px; font-size: 12px; color: #b9d3ff; }
-.hint { font-size: 12px; color: #95a2c8; }
+.status { margin-top: 8px; font-size: 12px; line-height: 1.45; color: #b9d3ff; }
+.hint { font-size: 12px; line-height: 1.45; color: #95a2c8; }
 .fieldHint {
   display: block;
   margin-top: 4px;
@@ -400,13 +426,6 @@ button.compact:active:not(:disabled) {
 .locateToggleCard {
   min-height: 42px;
   border: 1px solid #33415f;
-  border-radius: 10px;
-  background: #0f1630;
-  padding: 10px;
-}
-
-.locateInlineHint {
-  border: 1px dashed #33415f;
   border-radius: 10px;
   background: #0f1630;
   padding: 10px;
@@ -786,15 +805,6 @@ button.compact:active:not(:disabled) {
   transition:
     transform 700ms cubic-bezier(0.18, 0.72, 0.18, 1),
     opacity 420ms ease;
-}
-
-.battlefrontRevealEyebrow {
-  margin-bottom: 8px;
-  color: #ffd166;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
 }
 
 .battlefrontRevealTitle {
